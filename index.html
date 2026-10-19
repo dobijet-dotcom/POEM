@@ -162,8 +162,9 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
     </label>
 
     <h2>내 시어 글꼴 올리기</h2>
-    <p class="hint">종이에 그린 시어 글꼴을 사진으로 찍거나 스캔해서 올리면, 시 속에서 그 단어가 나오는 자리마다 내 그림이 들어가요. 그림은 <b>이 기기에만</b> 저장되고 다른 곳에 올라가지 않아요.</p>
-    <label for="upFile">① 그림 파일 고르기<input id="upFile" type="file" accept="image/*"></label>
+    <p class="hint">종이에 그린 시어 글꼴을 사진, 스캔 그림, <b>PDF</b>로 올리면, 시 속에서 그 단어가 나오는 자리마다 내 그림이 들어가요. 그림은 <b>이 기기에만</b> 저장되고 다른 곳에 올라가지 않아요.</p>
+    <label for="upFile">① 그림 또는 PDF 파일 고르기<input id="upFile" type="file" accept="image/*,application/pdf,.pdf"></label>
+    <label for="upPage" id="upPageWrap" hidden>PDF에서 몇 쪽을 쓸까요?<select id="upPage"></select></label>
     <div class="uprev" id="upPrev" hidden>
       <div class="upcv"><canvas id="upCv" aria-label="바탕을 지운 미리보기"></canvas></div>
       <label class="check" for="upBg"><input id="upBg" type="checkbox" checked> 색지 바탕 지우기</label>
@@ -524,7 +525,7 @@ function saveMine(){try{localStorage.setItem('poem-mine-v1',JSON.stringify(MINE)
 function processUpload(){
   if(!up.img) return;
   const img=up.img, rot=up.rot%360, side=(rot===90||rot===270);
-  const iw=img.naturalWidth, ih=img.naturalHeight, k=Math.min(1,1000/Math.max(iw,ih));
+  const iw=img.naturalWidth||img.width, ih=img.naturalHeight||img.height, k=Math.min(1,1000/Math.max(iw,ih));
   const w=Math.round((side?ih:iw)*k), h=Math.round((side?iw:ih)*k);
   const c=document.createElement('canvas'); c.width=w; c.height=h; const g=c.getContext('2d',{willReadFrequently:true});
   g.translate(w/2,h/2); g.rotate(rot*Math.PI/180); g.drawImage(img,-iw*k/2,-ih*k/2,iw*k,ih*k); g.setTransform(1,0,0,1,0,0);
@@ -564,8 +565,44 @@ function processUpload(){
   o.getContext('2d').drawImage(c,x0,y0,cw,ch,0,0,o.width,o.height);
   up.out=o.toDataURL('image/png');
 }
+// PDF: pdf.js를 필요할 때만 불러와 쪽을 그림으로 바꿈
+const PDFJS='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+function loadScript(src){return new Promise((ok,no)=>{const sc=document.createElement('script');sc.src=src;sc.onload=ok;sc.onerror=()=>no(new Error('load'));document.head.appendChild(sc);});}
+let pdfReady=null;
+function loadPdfJs(){
+  if(!pdfReady) pdfReady=(async()=>{
+    await loadScript(PDFJS+'pdf.min.js');
+    await loadScript(PDFJS+'pdf.worker.min.js'); // 별도 작업 스레드 없이 이 페이지 안에서 처리
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc=PDFJS+'pdf.worker.min.js';
+    return window.pdfjsLib;
+  })().catch(e=>{pdfReady=null;throw e;});
+  return pdfReady;
+}
+async function renderPdfPage(n){
+  $('upMsg').textContent=`PDF ${n}쪽을 여는 중이에요…`;
+  const page=await up.pdf.getPage(n), v1=page.getViewport({scale:1}), sc=Math.min(3,1600/Math.max(v1.width,v1.height));
+  const vp=page.getViewport({scale:sc}), cv=document.createElement('canvas'); cv.width=Math.round(vp.width); cv.height=Math.round(vp.height);
+  const g=cv.getContext('2d'); g.fillStyle='#fff'; g.fillRect(0,0,cv.width,cv.height);
+  await page.render({canvasContext:g,viewport:vp}).promise;
+  up.img=cv; up.rot=0; up.page=n; $('upPrev').hidden=false; processUpload();
+  $('upMsg').textContent=`${n}쪽을 띄웠어요. 미리보기를 확인하고, 어떤 시어인지 적은 뒤 ‘시에 넣기’를 누르세요.`;
+}
+$('upPage').addEventListener('input',()=>{ if(up.pdf) renderPdfPage(+$('upPage').value).catch(()=>{$('upMsg').textContent='이 쪽을 열 수 없어요.';}); });
+async function openPdf(f){
+  $('upMsg').textContent='PDF를 여는 중이에요…';
+  try{
+    const lib=await loadPdfJs();
+    const pdf=await lib.getDocument({data:new Uint8Array(await f.arrayBuffer())}).promise;
+    up={img:null,rot:0,out:null,pdf,page:1};
+    $('upPage').innerHTML=Array.from({length:pdf.numPages},(_,i)=>`<option value="${i+1}">${i+1}쪽</option>`).join('');
+    $('upPageWrap').hidden=pdf.numPages<2;
+    await renderPdfPage(1);
+  }catch(e){ $('upMsg').textContent='PDF를 열 수 없어요. 인터넷 연결을 확인하거나, 암호가 걸리지 않은 PDF인지 확인해 주세요.'; }
+}
 $('upFile').addEventListener('change',e=>{
   const f=e.target.files&&e.target.files[0]; if(!f) return;
+  if(f.type==='application/pdf'||/\.pdf$/i.test(f.name)){ openPdf(f); return; }
+  $('upPageWrap').hidden=true;
   const r=new FileReader();
   r.onload=()=>{const im=new Image(); im.onload=()=>{up={img:im,rot:0,out:null}; $('upPrev').hidden=false; processUpload(); $('upMsg').textContent='미리보기를 확인하고, 어떤 시어인지 적은 뒤 ‘시에 넣기’를 누르세요.';};
     im.onerror=()=>{$('upMsg').textContent='그림을 열 수 없어요. JPG나 PNG 사진으로 다시 골라 주세요.';}; im.src=r.result;};
@@ -575,14 +612,19 @@ $('upFile').addEventListener('change',e=>{
 $('upRot').addEventListener('click',()=>{up.rot=(up.rot+90)%360; processUpload();});
 $('upAdd').addEventListener('click',()=>{
   const word=$('upWord').value.trim();
-  if(!up.out){$('upMsg').textContent='먼저 그림 파일을 골라 주세요.';return;}
+  if(!up.out){$('upMsg').textContent='먼저 그림이나 PDF 파일을 골라 주세요.';return;}
   if(!word){$('upMsg').textContent='어떤 시어인지 적어 주세요. 시에 나오는 글자와 똑같이 적어야 해요.';$('upWord').focus();return;}
   const item={word,maker:$('upMaker').value.trim(),src:up.out};
   const i=MINE.findIndex(m=>m.word===word); if(i>=0) MINE[i]=item; else MINE.push(item);
   const ok=saveMine();
   const found=$('p').value.includes(word);
-  $('upMsg').textContent=(found?`‘${word}’ 자리에 내 글꼴을 넣었어요.`:`‘${word}’를 저장했어요. 그런데 지금 시에는 이 단어가 없어요. 시에 나오는 글자와 똑같은지 확인해 주세요.`)+(ok?'':' (이 기기에 저장할 공간이 부족해서, 창을 닫으면 사라져요.)');
-  up={img:null,rot:0,out:null}; $('upPrev').hidden=true; $('upFile').value=''; $('upWord').value='';
+  $('upMsg').textContent=(found?`‘${word}’ 자리에 내 글꼴을 넣었어요.`:`‘${word}’ 글꼴을 저장했어요. 그런데 지금 시에는 이 단어가 없어요. 시에 나오는 글자와 똑같은지 확인해 주세요.`)+(ok?'':' (이 기기에 저장할 공간이 부족해서, 창을 닫으면 사라져요.)');
+  $('upWord').value='';
+  if(up.pdf && up.page<up.pdf.numPages){
+    // 여러 쪽 PDF는 다음 쪽을 바로 띄워 이어서 넣게 함
+    const next=up.page+1; $('upPage').value=String(next);
+    renderPdfPage(next).then(()=>{$('upMsg').textContent=`‘${word}’ 글꼴을 넣었어요. 이어서 ${next}쪽을 띄웠어요. 이 쪽의 시어를 적고 ‘시에 넣기’를 누르세요.`;});
+  } else { up={img:null,rot:0,out:null}; $('upPrev').hidden=true; $('upPageWrap').hidden=true; $('upFile').value=''; }
   drawMine(); render();
 });
 function drawMine(){
