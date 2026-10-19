@@ -1,0 +1,1034 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="시 한 편과 모둠원 셋의 시어 타이포그래피로 시화를 완성하는 국어 수업 웹앱">
+<script>
+/* ===================== 선생님이 바꾸는 곳 =====================
+   Cloudflare에 만든 AI 서버(Worker) 주소를 따옴표 안에 넣으세요.
+   예) aiServer: "https://sihwa-ai.myname.workers.dev"
+   비워 두면 AI 없이 '규칙으로 배치'만 쓸 수 있어요.
+   ============================================================ */
+window.SIHWA_CONFIG = { aiServer: "" };
+</script>
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>시어 모아 시화</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@500;800&family=IBM+Plex+Sans+KR:wght@400;500;600&family=Gowun+Batang:wght@400;700&family=Nanum+Myeongjo:wght@400;800&family=Nanum+Pen+Script&family=Gaegu:wght@400;700&family=Gowun+Dodum&family=Song+Myung&family=Do+Hyeon&family=East+Sea+Dokdo&family=Black+Han+Sans&display=swap">
+<style>
+/* Layout: 세 단계가 위에서 아래로 흐르는 작업대. 상단엔 무드미터 2×2를 정체성 요소로, 마지막 단계는 캔버스(시화)와 해설 패널 2단. */
+:root{
+  --paper:#EEF1F4; --card:#FFFFFF; --ink:#16202C; --muted:#586473; --line:#D5DBE2; --soft:#E3E8EE;
+  --primary:#16202C; --on-primary:#FFFFFF; --focus:#1F5FAD;
+  --red:#C0392B; --yellow:#E8A818; --blue:#1F5FAD; --green:#3E9A4A;
+  --warn:#A2560C; --ok:#2F7A3A;
+  --f-display:"Hahmlet","Nanum Myeongjo",serif;
+  --f-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --f-poem:"Gowun Batang","Nanum Myeongjo",serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#11161D; --card:#19202A; --ink:#E6EBF1; --muted:#9AA6B3; --line:#2B3440; --soft:#212A35;
+  --primary:#E6EBF1; --on-primary:#11161D; --focus:#7FA8E0; --warn:#E3A35B; --ok:#7CC487; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#11161D; --card:#19202A; --ink:#E6EBF1; --muted:#9AA6B3; --line:#2B3440; --soft:#212A35;
+  --primary:#E6EBF1; --on-primary:#11161D; --focus:#7FA8E0; --warn:#E3A35B; --ok:#7CC487; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+.wrap{max-width:1180px;margin:0 auto}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0}
+button,input,textarea,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+
+/* header */
+header.top{display:grid;grid-template-columns:1fr auto;gap:24px;align-items:end;padding-block:28px 20px;border-bottom:1px solid var(--line)}
+header.top h1{font-size:clamp(30px,5vw,46px);font-weight:800;letter-spacing:-.02em;line-height:1.1}
+header.top p{margin:6px 0 0;color:var(--muted)}
+.meter{display:grid;grid-template-columns:repeat(2,64px);grid-template-rows:repeat(2,40px);gap:3px;position:relative}
+.meter span{display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:600;border-radius:3px}
+.meter .r{background:var(--red)}.meter .y{background:var(--yellow);color:#2a1d00}.meter .b{background:var(--blue)}.meter .g{background:var(--green)}
+.meter-cap{font-size:11px;color:var(--muted);text-align:center;margin-top:4px;letter-spacing:.04em}
+
+.banner{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;margin-top:16px;padding:10px 14px;border:1px dashed var(--line);border-radius:8px;color:var(--muted);font-size:14px}
+
+nav.steps{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);display:flex;gap:6px;overflow-x:auto;padding-block:10px;border-bottom:1px solid var(--line)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--paper)}
+nav.steps a{flex:0 0 auto;text-decoration:none;color:var(--ink);padding:6px 12px;border-radius:999px;border:1px solid var(--line);font-size:14px;background:var(--card);display:flex;gap:6px;align-items:center}
+nav.steps a .st{width:8px;height:8px;border-radius:50%;background:var(--line)}
+nav.steps a.done .st{background:var(--ok)}
+
+section.step{padding-block:32px 8px}
+.step-head{display:flex;gap:14px;align-items:baseline;margin-bottom:16px}
+.step-head .no{font-family:var(--f-display);font-weight:800;font-size:15px;color:var(--muted)}
+.step-head h2{font-size:24px;font-weight:800}
+.step-head p{margin:0;color:var(--muted);font-size:14px}
+.hint{color:var(--muted);font-size:13px;margin:4px 0 0}
+
+.panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:20px}
+.fields{display:grid;gap:12px}
+label.f{display:grid;gap:4px;font-size:13px;font-weight:600;color:var(--muted)}
+label.f input,label.f textarea,label.f select{font-weight:400;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:9px 11px;font-size:15px;width:100%}
+textarea#poem{font-family:var(--f-poem);font-size:17px;line-height:1.9;min-height:280px;resize:vertical}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row>*{flex:1 1 160px;min-width:0}
+.meta{font-size:12px;color:var(--muted)}
+
+/* members */
+.members{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.mcard{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;display:grid;gap:12px;align-content:start;border-top:6px solid var(--mc,var(--line))}
+.mcard h3{font-size:16px;font-weight:800;display:flex;justify-content:space-between;align-items:center}
+.quads{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.quads button{border:2px solid transparent;border-radius:6px;padding:6px 4px;font-size:12px;font-weight:600;color:#fff;cursor:pointer;line-height:1.3}
+.quads button small{display:block;font-weight:400;opacity:.9;font-size:11px}
+.quads button[data-q="yellow"]{color:#2a1d00}
+.quads button[aria-pressed="true"]{border-color:var(--ink);box-shadow:0 0 0 2px var(--card) inset}
+.quads button[aria-pressed="false"]{opacity:.55}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chips button{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:2px 10px;font-size:13px;cursor:pointer}
+.chips button[aria-pressed="true"]{background:var(--mc);color:#fff;border-color:var(--mc)}
+.drop{position:relative;border:2px dashed var(--line);border-radius:8px;min-height:170px;display:flex;align-items:center;justify-content:center;text-align:center;padding:10px;cursor:pointer;color:var(--muted);font-size:13px;
+  background-color:var(--paper);background-image:linear-gradient(45deg,var(--soft) 25%,transparent 25%,transparent 75%,var(--soft) 75%),linear-gradient(45deg,var(--soft) 25%,transparent 25%,transparent 75%,var(--soft) 75%);background-size:16px 16px;background-position:0 0,8px 8px}
+.drop.has{border-style:solid}
+.drop.over{border-color:var(--focus)}
+.drop img{max-height:200px;max-width:100%;object-fit:contain}
+.drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.upbtns{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
+.btn.up{position:relative;text-align:center;overflow:hidden}
+.btn.up input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.btn.up:focus-within{outline:3px solid var(--focus);outline-offset:2px}
+.imgtools{display:grid;gap:8px;background:var(--paper);border-radius:8px;padding:10px}
+.strength{display:grid;gap:2px;font-size:12px;color:var(--muted)}
+.check{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--muted)}
+.wordstate{font-size:12px;font-weight:600}
+.wordstate.ok{color:var(--ok)}.wordstate.no{color:var(--warn)}
+.intent{font-size:13px;line-height:1.7;background:var(--paper);border-radius:6px;padding:10px 12px;border-left:3px solid var(--mc,var(--line))}
+.intent b{font-weight:600}
+
+/* compose */
+.compose{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:20px;align-items:start}
+.stage{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;position:relative}
+canvas#art{width:100%;height:auto;aspect-ratio:4/5;display:block;border-radius:4px;touch-action:none;cursor:grab;background:var(--soft)}
+.stage .busy{position:absolute;inset:12px;display:flex;flex-direction:column;gap:8px;align-items:center;justify-content:center;background:color-mix(in srgb,var(--card) 82%,transparent);border-radius:4px;font-weight:600;text-align:center;padding:20px}
+.dotsload{display:flex;gap:6px}
+.dotsload i{width:12px;height:12px;border-radius:3px;animation:pulse 1.2s infinite ease-in-out}
+.dotsload i:nth-child(1){background:var(--red)}.dotsload i:nth-child(2){background:var(--yellow);animation-delay:.15s}.dotsload i:nth-child(3){background:var(--blue);animation-delay:.3s}.dotsload i:nth-child(4){background:var(--green);animation-delay:.45s}
+@keyframes pulse{0%,100%{transform:translateY(0);opacity:.5}50%{transform:translateY(-6px);opacity:1}}
+@media (prefers-reduced-motion:reduce){.dotsload i{animation:none;opacity:1}}
+.btn{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:9px 14px;cursor:pointer;font-weight:600;font-size:14px}
+.btn:hover{border-color:var(--ink)}
+.btn.primary{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.big{padding:13px 18px;font-size:16px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.side{display:grid;gap:16px}
+.ready{display:grid;gap:4px;font-size:14px;margin:0;padding:0;list-style:none}
+.ready li::before{content:"○ ";color:var(--muted)}
+.ready li.ok::before{content:"● ";color:var(--ok)}
+.explain p{margin:0 0 10px}
+.explain ol{margin:0;padding-left:20px}
+.explain h3{font-size:15px;margin:12px 0 6px}
+.edit{display:grid;gap:10px;font-size:13px}
+.edit .sel{font-weight:600}
+.edit input[type=range]{width:100%}
+.edit .row>label{display:grid;gap:2px}
+.status{font-size:13px;color:var(--muted);min-height:1.4em}
+.status.err{color:var(--warn)}
+.tag{font-size:11px;font-weight:600;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.overlay{position:fixed;inset:0;z-index:20;background:rgba(10,14,20,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.overlay img{max-width:100%;max-height:calc(100% - 70px);object-fit:contain;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.overlay p{color:#dfe5ec;margin:0;font-size:14px;text-align:center}
+.overlay .btn{background:#fff;color:#16202C;border-color:#fff}
+.confirm{display:inline-flex;gap:6px;align-items:center}
+
+@media (max-width:900px){.members{grid-template-columns:1fr}.compose,.grid2{grid-template-columns:1fr}}
+@media (max-width:520px){header.top{grid-template-columns:1fr}.meter{justify-self:start}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>시어 모아 시화</h1>
+      <p>시 한 편을 쓰고, 모둠원 셋이 고른 시어를 감정 글꼴로 그려 올리면 AI가 한 장의 시화로 엮어 줍니다.</p>
+    </div>
+    <div aria-label="무드미터: 세로는 활력, 가로는 쾌적함">
+      <div class="meter"><span class="r">빨강</span><span class="y">노랑</span><span class="b">파랑</span><span class="g">초록</span></div>
+      <div class="meter-cap">↑활력 · 쾌적함→</div>
+    </div>
+  </header>
+
+  <div class="banner" id="banner">
+    <span id="bannerText">예시 모둠이 들어 있어요. 살펴본 뒤 <b>새 모둠 시작</b>을 눌러 우리 모둠의 작업을 시작하세요.</span>
+    <span class="confirm" id="resetWrap"><button class="btn" id="resetBtn" type="button">새 모둠 시작</button></span>
+  </div>
+
+  <nav class="steps" aria-label="단계">
+    <a href="#s1" id="n1"><span class="st"></span>1 · 시 쓰기</a>
+    <a href="#s2" id="n2"><span class="st"></span>2 · 시어 글꼴 올리기</a>
+    <a href="#s3" id="n3"><span class="st"></span>3 · AI 시화 완성</a>
+  </nav>
+
+  <!-- STEP 1 -->
+  <section class="step" id="s1">
+    <div class="step-head"><span class="no">1</span><div><h2>우리 모둠의 시</h2><p>시집에서 고른 시(또는 모둠 창작시)를 처음부터 끝까지 옮겨 씁니다. 행과 연 구분을 살려 주세요.</p></div></div>
+    <div class="panel grid2">
+      <div class="fields">
+        <label class="f">시 제목<input id="title" maxlength="40" placeholder="예) 겨울 창가"></label>
+        <label class="f">시인 · 출처<input id="source" maxlength="60" placeholder="예) ○○○, 『시집 이름』 / 모둠 창작"></label>
+        <p class="hint">빈 줄 하나는 연 구분으로 시화에도 그대로 반영돼요. 행 하나가 길면 시화에서 자동으로 줄이 바뀝니다.</p>
+        <p class="meta" id="poemMeta"></p>
+      </div>
+      <label class="f">시 전문<textarea id="poem" placeholder="시를 한 행씩 옮겨 쓰세요."></textarea></label>
+    </div>
+  </section>
+
+  <!-- STEP 2 -->
+  <section class="step" id="s2">
+    <div class="step-head"><span class="no">2</span><div><h2>시어 글꼴 올리기</h2><p>모둠원마다 마음이 머문 시어 하나를 골라, 그 감정·분위기·느낌을 담아 직접 그린 타이포그래피를 올립니다. 올린 그림은 시 전문 속 그 시어 자리에 들어가요.</p></div></div>
+    <div class="members" id="members"></div>
+    <p class="hint">종이에 그렸다면 그림이 화면을 가득 채우도록 똑바로 위에서 찍어 주세요. ‘종이·흰 배경 지우기’가 그림자와 종이색을 지우고 그린 선만 남겨요. 선이 같이 지워지면 세기를 낮추고, 종이 얼룩이 남으면 높여 보세요. 시어 칸에는 시 속 낱말을 그대로 적어야 시 전문 속 그 자리에 그림이 들어가요.</p>
+  </section>
+
+  <!-- STEP 3 -->
+  <section class="step" id="s3">
+    <div class="step-head"><span class="no">3</span><div><h2>AI 시화 완성</h2><p>시 전문 속 시어 자리에 모둠원의 그림 글꼴이 들어가고, AI가 시의 흐름과 세 감정 색을 읽어 그림 크기·기울기, 배경, 글씨체를 정해 한 장의 시화로 엮습니다.</p></div></div>
+    <div class="compose">
+      <div class="stage">
+        <canvas id="art" width="1080" height="1350" aria-label="완성된 시화 미리보기"></canvas>
+        <div class="busy" id="busy" hidden><div class="dotsload"><i></i><i></i><i></i><i></i></div><span id="busyText">AI가 시와 글꼴을 읽고 있어요…</span><button class="btn" id="stopBtn" type="button">멈추기</button></div>
+      </div>
+      <div class="side">
+        <div class="panel">
+          <div class="tag">준비 확인</div>
+          <ul class="ready" id="ready"></ul>
+          <div id="aiConn" hidden style="margin-top:12px;display:grid;gap:8px">
+            <label class="f">수업 코드 (선생님이 알려 줘요)<input id="classCode" maxlength="40" autocomplete="off" placeholder="예) 2-3국어"></label>
+            <details><summary class="meta" style="cursor:pointer">교사용: AI 서버 주소</summary>
+              <label class="f" style="margin-top:6px">AI 서버 주소<input id="aiServerInput" inputmode="url" placeholder="https://sihwa-ai.○○○.workers.dev"></label>
+              <p class="hint">비워 두면 웹앱 파일의 기본 주소를 써요. 이 기기에만 저장돼요.</p></details>
+          </div>
+          <label class="f" style="margin-top:12px">AI에게 바라는 시화 분위기 (선택)<input id="wish" maxlength="80" placeholder="예) 차가운 겨울밤에서 따뜻한 새벽으로 넘어가는 느낌"></label>
+          <div class="actions" style="margin-top:12px">
+            <button class="btn primary big" id="aiBtn" type="button">AI로 시화 완성하기</button>
+            <button class="btn" id="ruleBtn" type="button" title="AI 없이 무드미터 규칙으로 배치">규칙으로 배치</button>
+          </div>
+          <p class="status" id="status"></p>
+          <p class="hint">이 단계는 사람이 아닌 인공지능(AI)이 도와줘요. AI의 해설은 참고만 하고, 우리 모둠의 생각으로 고쳐 써도 돼요.</p>
+        </div>
+
+        <div class="panel explain" id="explain" hidden></div>
+
+        <div class="panel edit" id="editPanel" hidden>
+          <div class="tag">손보기</div>
+          <div class="sel" id="selLabel">시화 속 글꼴·시·제목을 눌러 고르고, 끌어서 옮겨 보세요.</div>
+          <div id="selCtrls" hidden>
+            <label>크기 <input type="range" id="selSize"></label>
+            <label id="rotWrap">기울기 <input type="range" id="selRot" min="-25" max="25" step="1"></label>
+          </div>
+          <div class="row">
+            <label class="f">시 글씨체<select id="poemFont"></select></label>
+            <label class="f">제목 글씨체<select id="titleFont"></select></label>
+          </div>
+          <div class="row">
+            <label class="f">시 글자색<input type="color" id="poemColor"></label>
+            <label class="f">배경 위<input type="color" id="bg0"></label>
+            <label class="f">배경 아래<input type="color" id="bg1"></label>
+          </div>
+          <label class="check"><input type="checkbox" id="hl"> 같은 시어가 여러 번 나오면 모두 그림으로</label>
+          <label class="check"><input type="checkbox" id="deco"> 배경 장식 보이기</label>
+          <div class="actions">
+            <button class="btn primary" id="saveBtn" type="button">PNG로 저장</button>
+            <button class="btn" id="bigBtn" type="button">크게 보기</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="overlay" id="overlay" hidden>
+  <img id="overlayImg" alt="완성된 시화">
+  <p id="overlayMsg"></p>
+  <button class="btn" id="closeOverlay" type="button">닫기</button>
+</div>
+
+<script>
+(() => {
+const W = 1080, H = 1350;
+/*SHARED-START*/
+const MOODS = {
+  red:   {name:"빨강", sub:"활력↑ · 불쾌", base:"#C0392B", tint:"#F7D9D4", deep:"#5E1810", words:["화난","초조한","불안한","짜증나는","긴장한","격분한"]},
+  yellow:{name:"노랑", sub:"활력↑ · 쾌적", base:"#E8A818", tint:"#FBEFC8", deep:"#6B4A00", words:["신나는","설레는","들뜬","희망찬","기쁜","황홀한"]},
+  blue:  {name:"파랑", sub:"활력↓ · 불쾌", base:"#1F5FAD", tint:"#D4E2F4", deep:"#0D2A4F", words:["슬픈","외로운","쓸쓸한","지친","우울한","절망한"]},
+  green: {name:"초록", sub:"활력↓ · 쾌적", base:"#3E9A4A", tint:"#D6EEDA", deep:"#173F1E", words:["평온한","편안한","안온한","감사한","만족한","느긋한"]},
+};
+const FONTS = {
+  gowun:{fam:"Gowun Batang", w:"400", desc:"단정하고 서정적인 바탕체"},
+  myeongjo:{fam:"Nanum Myeongjo", w:"400", desc:"고전적이고 차분한 명조"},
+  pen:{fam:"Nanum Pen Script", w:"400", desc:"가볍고 친근한 펜 손글씨"},
+  gaegu:{fam:"Gaegu", w:"400", desc:"동글고 밝은 손글씨"},
+  dodum:{fam:"Gowun Dodum", w:"400", desc:"담백하고 맑은 돋움"},
+  song:{fam:"Song Myung", w:"400", desc:"붓맛이 도는 단아한 글씨"},
+  dohyeon:{fam:"Do Hyeon", w:"400", desc:"힘 있고 단단한 고딕"},
+  dokdo:{fam:"East Sea Dokdo", w:"400", desc:"거칠고 격한 붓글씨"},
+  blackhan:{fam:"Black Han Sans", w:"400", desc:"아주 굵고 강한 제목용"},
+};
+const DECOS = ["circle","ring","line","wave","dots","star","spark","petal","rain","moon","cloud","snow"];
+/*SHARED-END*/
+const $ = s => document.querySelector(s);
+const clamp = (v,a,b,d) => { v = Number(v); return Number.isFinite(v) ? Math.min(b,Math.max(a,v)) : d; };
+const hexOk = (c,d) => (typeof c==="string" && /^#[0-9a-f]{6}$/i.test(c.trim())) ? c.trim() : d;
+
+const blankMember = () => ({name:"",word:"",quad:"",emotion:"",mood:"",feel:"",newPoint:"",raw:"",img:"",removeBg:true,strength:50,ink:70});
+let S = {example:false, title:"", source:"", poem:"", members:[blankMember(),blankMember(),blankMember()], wish:"", layout:null, ai:null};
+const imgCache = [null,null,null];
+let bottomRender = null;
+let sample = null, downloads = null, selected = null, aiCtl = null, variation = 0;
+
+/* ---------- storage (per device convenience) ---------- */
+const KEY = "sihwa-draft-v1";
+let saveTimer;
+function persist(){ clearTimeout(saveTimer); saveTimer = setTimeout(()=>{ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ try{ const lite = {...S, members:S.members.map(m=>({...m, raw:""}))}; localStorage.setItem(KEY, JSON.stringify(lite)); }catch(_){} } }, 400); }
+function restore(){ try{ const t = localStorage.getItem(KEY); if(!t) return false; const o = JSON.parse(t); if(!o || !Array.isArray(o.members)) return false; S = {...S, ...o}; S.members = [0,1,2].map(i=>({...blankMember(), ...(o.members[i]||{})})); return true; }catch(e){ return false; } }
+
+/* ---------- step 1 ---------- */
+function bindPoem(){
+  for (const id of ["title","source","poem","wish"]) {
+    const el = $("#"+id); el.value = S[id] || "";
+    el.addEventListener("input", () => { S[id] = el.value; if(id!=="wish"){ S.example=false; } updateAll(); persist(); });
+  }
+}
+function poemLines(){ return (S.poem||"").replace(/\r/g,"").split("\n"); }
+function updatePoemMeta(){
+  const lines = poemLines(); const nonEmpty = lines.filter(l=>l.trim()).length;
+  const stanzas = (S.poem||"").trim() ? (S.poem.trim().split(/\n\s*\n/).length) : 0;
+  $("#poemMeta").textContent = nonEmpty ? `${stanzas}연 ${nonEmpty}행 · ${S.poem.replace(/\s/g,"").length}자` : "아직 시를 쓰지 않았어요.";
+}
+
+/* ---------- step 2 ---------- */
+function memberCard(i){
+  const el = document.createElement("div"); el.className = "mcard"; el.dataset.i = i;
+  el.innerHTML = `
+    <h3><span>모둠원 ${i+1}</span><span class="wordstate" data-k="ws"></span></h3>
+    <div class="row">
+      <label class="f">이름<input data-k="name" id="m${i}name" maxlength="12"></label>
+      <label class="f">고른 시어<input data-k="word" id="m${i}word" maxlength="12" placeholder="시 속 낱말"></label>
+    </div>
+    <div>
+      <div class="tag" style="margin-bottom:4px">감정 · 무드미터 영역</div>
+      <div class="quads">${Object.entries(MOODS).map(([k,m])=>`<button type="button" data-q="${k}" style="background:${m.base}" aria-pressed="false">${m.name}<small>${m.sub}</small></button>`).join("")}</div>
+    </div>
+    <div class="chips" data-k="chips"></div>
+    <label class="f">감정 낱말<input data-k="emotion" id="m${i}emotion" maxlength="14" placeholder="위에서 고르거나 직접 쓰기"></label>
+    <div class="row">
+      <label class="f">분위기<input data-k="mood" id="m${i}mood" maxlength="24" placeholder="예) 고요하고 어두운"></label>
+      <label class="f">느낌(감각)<input data-k="feel" id="m${i}feel" maxlength="24" placeholder="예) 차갑다, 바스락"></label>
+    </div>
+    <div>
+      <div class="tag" style="margin-bottom:4px">내가 그린 타이포그래피</div>
+      <div class="drop" data-k="drop" tabindex="0" aria-label="모둠원 ${i+1} 타이포그래피 그림 올리기">
+        <span data-k="dropText">종이에 그린 그림은 <b>사진 찍기</b>,<br>캔바·태블릿 그림은 <b>파일 고르기</b><br><span class="meta">여기에 끌어다 놓거나 붙여넣어도 돼요</span></span>
+        <img data-k="prev" alt="" hidden>
+      </div>
+      <div class="upbtns">
+        <label class="btn up"><input type="file" accept="image/*" capture="environment" data-k="cam" id="m${i}cam">사진 찍기</label>
+        <label class="btn up"><input type="file" accept="image/*" data-k="file" id="m${i}file">파일 고르기</label>
+      </div>
+    </div>
+    <div class="imgtools" data-k="tools" hidden>
+      <label class="check"><input type="checkbox" data-k="removeBg" id="m${i}bg"> 종이·흰 배경 지우기</label>
+      <label class="strength" data-k="strWrap">배경 지우기 세기 <input type="range" min="0" max="100" step="5" data-k="strength" id="m${i}str"></label>
+      <label class="strength">선 진하기 (오른쪽일수록 진하고 또렷하게) <input type="range" min="0" max="100" step="5" data-k="ink" id="m${i}ink"></label>
+      <div class="row">
+        <button class="btn" type="button" data-k="rotate">90° 돌리기</button>
+        <button class="btn" type="button" data-k="clearImg">그림 빼기</button>
+      </div>
+    </div>
+    <label class="f">다르게 새로 만든 점<input data-k="newPoint" id="m${i}np" maxlength="60" placeholder="예) ㅇ을 불씨 모양으로 바꾼 것"></label>
+    <div class="intent" data-k="intent"></div>`;
+  const m = () => S.members[i];
+  el.querySelectorAll("input[data-k]").forEach(inp=>{
+    const k = inp.dataset.k; if (k==="file" || k==="cam") return;
+    if (k==="strength" || k==="ink"){ inp.value = m()[k] ?? (k==="ink"?70:50); inp.addEventListener("change", async ()=>{ m()[k]=+inp.value; await reprocess(i); }); return; }
+    if (inp.type==="checkbox"){ inp.checked = !!m()[k]; inp.addEventListener("change", async ()=>{ m()[k]=inp.checked; await reprocess(i); }); }
+    else { inp.value = m()[k]||""; inp.addEventListener("input", ()=>{ m()[k]=inp.value; S.example=false; updateCard(i); updateAll(); persist(); }); }
+  });
+  el.querySelectorAll(".quads button").forEach(b=>b.addEventListener("click", ()=>{ m().quad = b.dataset.q; S.example=false; updateCard(i); updateAll(); persist(); }));
+  const drop = el.querySelector('[data-k="drop"]'), file = el.querySelector('[data-k="file"]'), cam = el.querySelector('[data-k="cam"]');
+  for (const f of [file, cam]) f.addEventListener("change", ()=>{ if(f.files[0]) takeFile(i, f.files[0]); f.value=""; });
+  drop.addEventListener("click", ()=>file.click());
+  drop.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); file.click(); } });
+  el.querySelector('[data-k="rotate"]').addEventListener("click", async ()=>{ if(!m().raw) return; m().raw = await rotateRaw(m().raw); await reprocess(i); });
+  drop.addEventListener("dragover", e=>{ e.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave", ()=>drop.classList.remove("over"));
+  drop.addEventListener("drop", e=>{ e.preventDefault(); drop.classList.remove("over"); const f=[...e.dataTransfer.files].find(f=>f.type.startsWith("image/")); if(f) takeFile(i,f); });
+  drop.addEventListener("paste", e=>{ const it=[...(e.clipboardData?.items||[])].find(x=>x.type.startsWith("image/")); if(it){ e.preventDefault(); takeFile(i, it.getAsFile()); } });
+  el.addEventListener("paste", e=>{ if(e.target===drop) return; const it=[...(e.clipboardData?.items||[])].find(x=>x.type.startsWith("image/")); if(it){ e.preventDefault(); takeFile(i, it.getAsFile()); } });
+  el.querySelector('[data-k="clearImg"]').addEventListener("click", ()=>{ m().raw=""; m().img=""; imgCache[i]=null; updateCard(i); updateAll(); persist(); });
+  return el;
+}
+function updateCard(i){
+  const el = document.querySelector(`.mcard[data-i="${i}"]`); if(!el) return; const m = S.members[i];
+  const mood = MOODS[m.quad]; el.style.setProperty("--mc", mood ? mood.base : "var(--line)");
+  el.querySelectorAll(".quads button").forEach(b=>b.setAttribute("aria-pressed", m.quad ? String(b.dataset.q===m.quad) : "true"));
+  const chips = el.querySelector('[data-k="chips"]');
+  chips.innerHTML = mood ? mood.words.map(w=>`<button type="button" aria-pressed="${w===m.emotion}">${w}</button>`).join("") : `<span class="meta">무드미터 영역을 먼저 고르면 감정 낱말이 나와요.</span>`;
+  chips.querySelectorAll("button").forEach(b=>b.addEventListener("click", ()=>{ m.emotion=b.textContent; el.querySelector('[data-k="emotion"]').value=m.emotion; S.example=false; updateCard(i); updateAll(); persist(); }));
+  const ws = el.querySelector('[data-k="ws"]');
+  if (!m.word.trim()) { ws.textContent=""; ws.className="wordstate"; }
+  else if (findInPoem(m.word)) { ws.textContent="시 속에 있음 ✓"; ws.className="wordstate ok"; }
+  else { ws.textContent="시에서 못 찾음"; ws.className="wordstate no"; }
+  const prev = el.querySelector('[data-k="prev"]'), dt = el.querySelector('[data-k="dropText"]'), drop = el.querySelector('[data-k="drop"]');
+  if (m.img){ prev.src = m.img; prev.hidden=false; dt.hidden=true; drop.classList.add("has"); } else { prev.hidden=true; prev.removeAttribute("src"); dt.hidden=false; drop.classList.remove("has"); }
+  el.querySelector('[data-k="tools"]').hidden = !m.img;
+  el.querySelector('[data-k="strWrap"]').hidden = !m.removeBg;
+  const bl = s => s && s.trim() ? `<b>${esc(s.trim())}</b>` : "____";
+  el.querySelector('[data-k="intent"]').innerHTML = `나는 「${bl(S.title)}」의 시어 ‘${bl(m.word)}’에 담긴 ${bl(m.emotion)} 감정을 ${mood?`<b>${mood.name}색</b>`:"____색"}과 ${bl(m.mood||m.feel)} 모양으로 표현했다. 다른 글꼴과 다르게 내가 새로 만든 점은 ${bl(m.newPoint)}이다.`;
+  ["name","word","emotion","mood","feel","newPoint"].forEach(k=>{ const inp = el.querySelector(`input[data-k="${k}"]`); if(inp && document.activeElement!==inp && inp.value!==(m[k]||"")) inp.value = m[k]||""; });
+  el.querySelector('input[data-k="removeBg"]').checked = !!m.removeBg;
+}
+function esc(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function findInPoem(word){
+  const w = (word||"").trim(); if(!w || !S.poem) return null;
+  if (S.poem.includes(w)) return w;
+  if (w.length>=3 && S.poem.includes(w.slice(0,-1))) return w.slice(0,-1);
+  return null;
+}
+
+/* ---------- images ---------- */
+function loadImage(src){ return new Promise((res,rej)=>{ const im = new Image(); im.onload=()=>res(im); im.onerror=rej; im.src=src; }); }
+async function takeFile(i, f){
+  if (!f || !f.type.startsWith("image/")) { setStatus("그림 파일(사진)만 올릴 수 있어요.", true); return; }
+  if (f.size > 25*1024*1024){ setStatus("그림 파일이 너무 커요(25MB 이하).", true); return; }
+  try{
+    const url = await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(f); });
+    const im = await loadImage(url);
+    const sc = Math.min(1, 1200/Math.max(im.naturalWidth, im.naturalHeight));
+    const c = document.createElement("canvas"); c.width=Math.round(im.naturalWidth*sc); c.height=Math.round(im.naturalHeight*sc);
+    const x = c.getContext("2d"); x.fillStyle="#fff"; x.fillRect(0,0,c.width,c.height); x.drawImage(im,0,0,c.width,c.height);
+    S.members[i].raw = c.toDataURL("image/jpeg", .9);
+    await reprocess(i);
+  }catch(e){ setStatus("그림을 읽지 못했어요. 사진(JPG·PNG)인지 확인해 주세요.", true); }
+}
+async function reprocess(i){
+  const m = S.members[i];
+  if (m.raw){ m.img = await processImg(m.raw, m.removeBg, m.strength ?? 50, m.ink ?? 70); await loadCache(i); }
+  S.example=false; updateCard(i); updateAll(); persist();
+}
+async function rotateRaw(raw){
+  const im = await loadImage(raw); const c=document.createElement("canvas"); c.width=im.naturalHeight; c.height=im.naturalWidth;
+  const x=c.getContext("2d"); x.translate(c.width/2,c.height/2); x.rotate(Math.PI/2); x.drawImage(im,-im.naturalWidth/2,-im.naturalHeight/2);
+  return c.toDataURL("image/jpeg",.9);
+}
+/* 선을 진하고 또렷하게: 채도를 올리고 밝기를 낮추며, 진하기가 높으면 가는 선을 1px 굵힌다 */
+function inkify(c, ink, transparent){
+  if (!ink) return c;
+  const x=c.getContext("2d"), d=x.getImageData(0,0,c.width,c.height), p=d.data;
+  const sat = 1 + ink/100*0.6, dark = 1 - ink/100*0.32;
+  for (let k=0;k<p.length;k+=4){
+    if (transparent && p[k+3]===0) continue;
+    const r=p[k], g=p[k+1], b=p[k+2], avg=(r+g+b)/3;
+    if (!transparent && Math.min(r,g,b) > 235) continue; // 배경을 지우지 않을 때는 흰 바탕은 그대로
+    p[k]  = Math.max(0,Math.min(255,(avg+(r-avg)*sat)*dark));
+    p[k+1]= Math.max(0,Math.min(255,(avg+(g-avg)*sat)*dark));
+    p[k+2]= Math.max(0,Math.min(255,(avg+(b-avg)*sat)*dark));
+  }
+  x.putImageData(d,0,0);
+  if (transparent && ink >= 85){
+    const t=document.createElement("canvas"); t.width=c.width; t.height=c.height; t.getContext("2d").drawImage(c,0,0);
+    for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]) x.drawImage(t,dx,dy);
+  }
+  return c;
+}
+/* 종이 사진도 깨끗하게: 종이(가장 밝은 바탕)의 밝기 지도를 만들어 나눠 주면 그림자·누런 종이가 하얗게 펴지고, 그 하얀 부분을 투명하게 지운다 */
+async function processImg(raw, removeBg, strength=50, ink=70){
+  const im = await loadImage(raw);
+  const w=im.naturalWidth, h=im.naturalHeight;
+  const c = document.createElement("canvas"); c.width=w; c.height=h;
+  const x = c.getContext("2d"); x.drawImage(im,0,0);
+  if (!removeBg) return inkify(c, ink, false).toDataURL("image/png");
+  const sw=40, sh=Math.max(2,Math.round(40*h/w));
+  const sm=document.createElement("canvas"); sm.width=sw; sm.height=sh; const sx=sm.getContext("2d"); sx.imageSmoothingQuality="high"; sx.drawImage(im,0,0,sw,sh);
+  let sd=sx.getImageData(0,0,sw,sh);
+  for (let pass=0; pass<3; pass++){ // 최댓값 필터: 잉크를 지우고 종이색만 남기기
+    const src=new Uint8ClampedArray(sd.data), dst=sd.data;
+    for (let yy=0;yy<sh;yy++) for (let xx=0;xx<sw;xx++){
+      for (let ch=0;ch<3;ch++){ let mx=0; for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){ const X=Math.min(sw-1,Math.max(0,xx+dx)), Y=Math.min(sh-1,Math.max(0,yy+dy)); const v=src[(Y*sw+X)*4+ch]; if(v>mx)mx=v; } dst[(yy*sw+xx)*4+ch]=mx; }
+    }
+  }
+  sx.putImageData(sd,0,0);
+  const bgc=document.createElement("canvas"); bgc.width=w; bgc.height=h; const bx=bgc.getContext("2d"); bx.imageSmoothingQuality="high"; bx.drawImage(sm,0,0,w,h);
+  const bg=bx.getImageData(0,0,w,h).data;
+  const d = x.getImageData(0,0,w,h), p = d.data;
+  const T = 248 - strength*0.8, band = 34;
+  let minX=w, minY=h, maxX=-1, maxY=-1;
+  for (let y=0;y<h;y++) for (let xx=0;xx<w;xx++){
+    const k=(y*w+xx)*4;
+    const r=Math.min(255,p[k]*255/Math.max(40,bg[k])), g=Math.min(255,p[k+1]*255/Math.max(40,bg[k+1])), b=Math.min(255,p[k+2]*255/Math.max(40,bg[k+2]));
+    const mn=Math.min(r,g,b), mx=Math.max(r,g,b);
+    let a=255;
+    if (mx-mn < 45){ if (mn>=T) a=0; else if (mn>=T-band) a=Math.round(255*(T-mn)/band); }
+    else if (mn>=T+4 && mx-mn<70) a=Math.round(255*(mx-mn-45)/25);
+    let R=r, G=g, B=b;
+    if (a>0 && a<255){ const af=a/255; R=Math.max(0,Math.min(255,(r-(1-af)*255)/af)); G=Math.max(0,Math.min(255,(g-(1-af)*255)/af)); B=Math.max(0,Math.min(255,(b-(1-af)*255)/af)); } // 테두리의 종이색 섞임 걷어내기
+    p[k]=R; p[k+1]=G; p[k+2]=B; p[k+3]=a>0 ? Math.min(255, a*(1+ink/200)) : 0;
+    if (a>40){ if(xx<minX)minX=xx; if(xx>maxX)maxX=xx; if(y<minY)minY=y; if(y>maxY)maxY=y; }
+  }
+  x.putImageData(d,0,0);
+  if (maxX<0) return c.toDataURL("image/png");
+  inkify(c, ink, true);
+  const pad=6; minX=Math.max(0,minX-pad); minY=Math.max(0,minY-pad); maxX=Math.min(w-1,maxX+pad); maxY=Math.min(h-1,maxY+pad);
+  const t=document.createElement("canvas"); t.width=maxX-minX+1; t.height=maxY-minY+1;
+  t.getContext("2d").drawImage(c,minX,minY,t.width,t.height,0,0,t.width,t.height);
+  return t.toDataURL("image/png");
+}
+async function loadCache(i){ const m=S.members[i]; imgCache[i] = m.img ? await loadImage(m.img).catch(()=>null) : null; }
+function dataURLtoBlob(u){ const [h,b]=u.split(","); const mime=h.match(/:(.*?);/)[1]; const bin=atob(b); const a=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)a[i]=bin.charCodeAt(i); return new Blob([a],{type:mime}); }
+
+/* ---------- readiness ---------- */
+function filled(){ return S.members.map((m,i)=>({m,i})).filter(o=>o.m.img); }
+function updateAll(){
+  updatePoemMeta();
+  S.members.forEach((_,i)=>updateCard(i));
+  const items = [
+    ["시 전문을 썼어요", !!S.poem.trim()],
+    ["시 제목을 썼어요", !!S.title.trim()],
+    ...S.members.map((m,i)=>[`모둠원 ${i+1}${m.name?` (${m.name})`:""} 글꼴 이미지`, !!m.img]),
+    ["모든 시어에 감정 색을 정했어요", S.members.filter(m=>m.img).every(m=>m.quad)],
+    ["그림 글꼴의 시어가 모두 시 속에 있어요", filled().length>0 && filled().every(o=>findInPoem(o.m.word))],
+  ];
+  $("#ready").innerHTML = items.map(([t,ok])=>`<li class="${ok?"ok":""}">${esc(t)}</li>`).join("");
+  const can = !!S.poem.trim() && filled().length>0;
+  $("#aiBtn").disabled = !can || !aiAvailable() || !!aiCtl; $("#ruleBtn").disabled = !can;
+  $("#aiBtn").title = aiAvailable() ? "" : "AI 서버가 연결되지 않았어요. ‘규칙으로 배치’를 써 보세요.";
+  $("#n1").classList.toggle("done", !!S.poem.trim() && !!S.title.trim());
+  $("#n2").classList.toggle("done", S.members.every(m=>m.img && m.word));
+  $("#n3").classList.toggle("done", !!S.layout);
+  $("#banner").hidden = !S.example;
+  if (S.layout) draw();
+}
+
+/* ---------- layout ---------- */
+function moodOf(i){ return MOODS[S.members[i].quad] || MOODS.blue; }
+function dominant(){
+  const cnt={}; S.members.forEach(m=>{ if(m.img&&m.quad) cnt[m.quad]=(cnt[m.quad]||0)+1; });
+  const top = Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0]; return top ? top[0] : "blue";
+}
+function ruleLayout(){
+  const fl = filled(); const dom = MOODS[dominant()];
+  const qs = fl.map(o=>moodOf(o.i));
+  const hot = q => q==="red" || q==="yellow";
+  const fontByQuad = {red:"dohyeon", yellow:"gaegu", blue:"gowun", green:"dodum"};
+  const decoByQuad = {red:"spark", yellow:"star", blue:"rain", green:"petal"};
+  const spots = [[.84,.1],[.12,.55],[.86,.86]];
+  return {
+    concept:"무드미터 규칙으로 엮은 기본 시화",
+    background:{colors:[qs[0]?.tint||dom.tint, (qs[qs.length-1]||dom).tint, "#FFFFFF"].slice(0,3), angle:170},
+    texture:"paper", showDeco:true,
+    decorations: fl.map((o,k)=>({shape:decoByQuad[S.members[o.i].quad]||"dots", x:spots[k][0], y:spots[k][1], size:.13, color:moodOf(o.i).base, opacity:.28, rotation:0, count:8})),
+    words: fl.map((o,k)=>{ const h = hot(S.members[o.i].quad); return {index:o.i, scale:h?3.3:2.6, rotation:(h?6:3)*(k%2?1:-1)}; }),
+    title:{x:.09, y:.06, align:"left", font:"blackhan", size:76, color:dom.deep},
+    poem:{x:.09, y:.2, width:.82, align:"left", font:fontByQuad[dominant()]||"gowun", size:38, color:dom.deep, lineHeight:1.7},
+    matchAll:true,
+  };
+}
+function sanitize(o){
+  const base = ruleLayout(); if (!o || typeof o!=="object") return base;
+  const bg = o.background||{}; const cols = (Array.isArray(bg.colors)?bg.colors:[]).map(c=>hexOk(c,null)).filter(Boolean).slice(0,3);
+  const fl = filled().map(f=>f.i);
+  let words = (Array.isArray(o.words)?o.words:[]).filter(w=>fl.includes(Number(w.index))).map(w=>({index:Number(w.index), scale:clamp(w.scale,1.2,4.5,2.3), rotation:clamp(w.rotation,-25,25,0)}));
+  for (const i of fl) if (!words.find(w=>w.index===i)) words.push(base.words.find(w=>w.index===i));
+  const fontId = (f,d) => FONTS[f] ? f : d;
+  const p = o.poem||{}, t = o.title||{};
+  return {
+    concept: String(o.concept||"").slice(0,120),
+    background:{colors: cols.length ? cols : base.background.colors, angle:clamp(bg.angle,0,360,170)},
+    texture: ["none","grain","paper"].includes(o.texture) ? o.texture : "paper",
+    showDeco:true,
+    decorations:(Array.isArray(o.decorations)?o.decorations:[]).slice(0,8).filter(d=>DECOS.includes(d.shape)).map(d=>({shape:d.shape, x:clamp(d.x,0,1,.5), y:clamp(d.y,0,1,.5), size:clamp(d.size,.02,.6,.15), color:hexOk(d.color,"#FFFFFF"), opacity:clamp(d.opacity,.05,.9,.3), rotation:clamp(d.rotation,-180,180,0), count:Math.round(clamp(d.count,1,30,6))})),
+    words,
+    title:{x:clamp(t.x,.03,.97,.09), y:clamp(t.y,.02,.5,.06), align:["left","center","right"].includes(t.align)?t.align:"left", font:fontId(t.font,"blackhan"), size:clamp(t.size,36,130,76), color:hexOk(t.color,base.title.color)},
+    poem:{x:clamp(p.x,.03,.6,.09), y:clamp(p.y,.08,.6,.2), width:clamp(p.width,.4,.94,.82), align:["left","center","right"].includes(p.align)?p.align:"left", font:fontId(p.font,"gowun"), size:clamp(p.size,22,60,38), color:hexOk(p.color,base.poem.color), lineHeight:clamp(p.lineHeight,1.3,2.3,1.7)},
+    matchAll: o.matchAll!==false,
+  };
+}
+
+/* ---------- AI ---------- */
+function promptData(){
+  return { title:S.title, source:S.source, poem:(S.poem||"").slice(0,4000), wish:S.wish||"", variation,
+    members: filled().map(o=>({index:o.i, name:o.m.name, word:o.m.word, quad:o.m.quad, emotion:o.m.emotion, mood:o.m.mood, feel:o.m.feel, newPoint:o.m.newPoint,
+      aspect: imgCache[o.i] ? +(imgCache[o.i].naturalWidth/imgCache[o.i].naturalHeight).toFixed(2) : 1})) };
+}
+/*PROMPT-START*/
+function buildPromptFrom(d){
+  const s = v => String(v==null?"":v).slice(0,80);
+  const mem = (d.members||[]).slice(0,3).map((m,k)=>{ const md=MOODS[m.quad];
+    return `- 이미지 ${k+1} = index ${Number(m.index)||0}: 모둠원 ${s(m.name)||"(이름 없음)"} / 시어 '${s(m.word)||"?"}' / 무드미터 ${md?md.name+"("+md.sub+", 기준색 "+md.base+")":"미정"} / 감정 '${s(m.emotion)||"-"}' / 분위기 '${s(m.mood)||"-"}' / 느낌 '${s(m.feel)||"-"}' / 새로 만든 점 '${s(m.newPoint)||"-"}' / 이미지 가로세로비 ${Number(m.aspect)||1}`; }).join("\n");
+  d = {...d, title:s(d.title), source:s(d.source), wish:s(d.wish), poem:String(d.poem||"").slice(0,4000), variation:Number(d.variation)||0};
+  const lines = d.poem.split("\n").length;
+  return `당신은 중학교 국어 시간에 학생 모둠의 시화를 함께 완성하는 미술·문학 조력자입니다.
+학생들이 시 한 편을 옮겨 쓰고, 모둠원마다 시어 하나를 골라 그 감정을 색(무드미터)과 형태로 담은 타이포그래피 이미지를 만들었습니다.
+첨부 이미지는 학생이 직접 그린 작품입니다(순서대로 아래 목록과 같음. 종이에 그린 그림을 찍은 사진일 수 있음). 작품은 고치지 않습니다. 각 그림의 색·획·오브제를 실제로 보고 판단하세요.
+중요: 시화에서 각 그림은 시 전문 속 그 시어 자리에 글자 대신 들어갑니다(예: '작은 불씨 하나'의 '불씨' 자리에 학생의 '불씨' 그림). 그래서 당신은 그림의 위치가 아니라 크기(scale)·기울기와 시 본문 블록·제목·배경을 정합니다.
+
+[시 제목] ${d.title||"(제목 없음)"}
+[시인·출처] ${d.source||"-"}
+[시 전문] (${lines}줄, 빈 줄은 연 구분)
+${d.poem}
+
+[시어 글꼴]
+${mem}
+
+[모둠이 바라는 분위기] ${d.wish||"특별히 없음"}
+[변주 번호] ${d.variation} (번호가 바뀌면 앞과 다른 구도를 시도)
+
+[과제] 1080×1350px(세로 4:5) 시화 한 장의 구성을 정하세요.
+- 시의 정서 흐름(처음→끝)과 세 시어의 무드미터 색이 어떻게 이어지거나 부딪히는지 해석해 배경색·구도를 정합니다. 무드미터 원리: 가로(쾌적함)→색, 세로(활력)→획. 활력이 높은 시어는 크고 기울게, 낮은 시어는 낮은 위치·작은 기울기 등.
+- 그림 글꼴은 시화의 주인공입니다. scale은 '시 글자 크기 대비 그림 높이 배수'(2~4.2 권장)예요. 그림이 시화의 주인공이 되도록 넉넉하게 키우세요. 활력이 높은 시어일수록 크게·많이 기울이고, 낮은 시어는 작게·살짝 처지게 하세요. 그림 너비 ≈ scale×size×가로세로비 px 이므로 시 본문 width 안에 들어가야 합니다.
+- 시 본문은 그림이 들어간 줄만큼 높아집니다. 블록 높이 ≈ Σ(일반 줄: size×lineHeight, 그림 들어간 줄: scale×size×1.1) + 연 구분(각 0.6×size×lineHeight). size는 기준값이고, 앱이 남는 자리에 맞춰 자동으로 키우거나 줄입니다(최대 1.45배). 아래쪽 4%는 모둠원 이름 캡션 자리입니다.
+- 제목은 시 본문 위쪽에 두고, 시 본문의 y는 제목 아래로 잡으세요.
+- 학생 그림 글꼴이 가장 또렷하게 보여야 합니다. 그림의 색과 배경의 명도 대비를 크게 하세요(대부분의 그림은 진한 색이므로 밝고 채도 낮은 배경이 기본). 시 글자색도 배경과 대비를 충분히 주세요.
+- 장식(decorations)은 시의 장면을 돕는 정도로 0~6개, 옅게.
+- 해설은 중학생에게 다정하고 구체적인 말투(해요체)로, 학생 작품의 좋은 점을 짚어 주세요.
+
+[출력] 아래 형태의 JSON 하나만 답하세요. 좌표는 0~1 비율입니다.
+{
+ "concept": "시화 콘셉트 한 문장",
+ "background": {"colors": ["#위색","#가운데색","#아래색"], "angle": 0~360 (180=위→아래)},
+ "texture": "none|grain|paper",
+ "decorations": [{"shape": "${DECOS.join("|")}", "x":0~1, "y":0~1, "size":0.02~0.6, "color":"#hex", "opacity":0.05~0.6, "rotation":-180~180, "count":1~30}],
+ "words": [{"index": 위 목록의 index, "scale": 2~4.2, "rotation": -20~20}],
+ "title": {"x":0~1, "y": 위쪽 가장자리 0~1, "align":"left|center|right"(x는 그 정렬의 기준점), "font": "${Object.keys(FONTS).join("|")}", "size": 36~130, "color":"#hex"},
+ "poem": {"x": 블록 왼쪽 가장자리 0.03~0.6, "y": 블록 위쪽 0.08~0.6, "width": 0.4~0.94, "align":"left|center|right", "font": "${Object.keys(FONTS).filter(k=>k!=="blackhan").join("|")}", "size": 24~52, "color":"#hex", "lineHeight": 1.4~2.1},
+ "matchAll": true|false (같은 시어가 시에 여러 번 나오면 모두 그림으로 바꿀지),
+ "explanation": "왜 이렇게 엮었는지 3~4문장 해설",
+ "word_roles": ["각 시어(이미지 순서대로)가 이 시화에서 맡은 역할 한 문장"],
+ "questions": ["모둠이 함께 이야기할 감상·성찰 질문 2개"]
+}
+글씨체 성격: ${Object.entries(FONTS).map(([k,f])=>k+"="+f.desc).join(", ")}.`;
+}
+/*PROMPT-END*/
+function buildPrompt(){ return buildPromptFrom(promptData()); }
+const CFG = Object.assign({aiServer:""}, window.SIHWA_CONFIG||{});
+function aiServer(){ let v=""; try{ v = localStorage.getItem("sihwa-ai-server")||""; }catch(e){} return (v || CFG.aiServer || "").trim(); }
+function classCode(){ return ($("#classCode")?.value||"").trim(); }
+function aiAvailable(){ return !!sample || !!aiServer(); }
+async function smallJpeg(dataUrl){
+  const im = await loadImage(dataUrl); const sc = Math.min(1, 900/Math.max(im.naturalWidth, im.naturalHeight));
+  const c=document.createElement("canvas"); c.width=Math.round(im.naturalWidth*sc); c.height=Math.round(im.naturalHeight*sc);
+  const x=c.getContext("2d"); x.fillStyle="#fff"; x.fillRect(0,0,c.width,c.height); x.drawImage(im,0,0,c.width,c.height);
+  return c.toDataURL("image/jpeg",.85);
+}
+function parseLooseJSON(t){
+  t = String(t||"").trim();
+  try{ return JSON.parse(t); }catch(e){}
+  const f = t.match(/```(?:json)?\s*([\s\S]*?)```/); if (f){ try{ return JSON.parse(f[1]); }catch(e){} }
+  const a=t.indexOf("{"), b=t.lastIndexOf("}"); if (a>=0 && b>a){ try{ return JSON.parse(t.slice(a,b+1)); }catch(e){} }
+  throw {code:"invalid_json"};
+}
+async function askServer(signal){
+  const imgs = await Promise.all(filled().map(o=>smallJpeg(o.m.raw || o.m.img)));
+  const body = {...promptData(), code: classCode(), images: imgs.map(u=>({type:"image/jpeg", data:u.split(",")[1]}))};
+  let r;
+  try{ r = await fetch(aiServer(), {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body), signal}); }
+  catch(e){ throw {code: e?.name==="AbortError" ? "cancelled" : "network"}; }
+  let j = null; try{ j = await r.json(); }catch(e){}
+  if (!r.ok) throw {code: j?.error || ("http_"+r.status)};
+  return parseLooseJSON(j?.text);
+}
+async function runAI(){
+  if (!aiAvailable()) return;
+  if (!sample && !classCode() && $("#aiConn") && !$("#aiConn").hidden){ $("#classCode").focus(); setStatus("선생님이 알려 준 수업 코드를 먼저 적어 주세요.", true); return; }
+  aiCtl = new AbortController(); showBusy(true, "AI가 시와 그림 글꼴을 읽고 있어요…");
+  setStatus("");
+  try{
+    let out;
+    if (sample){
+      const blobs = await Promise.all(filled().map(async o=>dataURLtoBlob(await smallJpeg(o.m.raw || o.m.img))));
+      out = await sample.json(buildPrompt(), {images: blobs, signal: aiCtl.signal, modelTier:"default",
+        onText: ()=>{ $("#busyText").textContent = "시화를 엮고 있어요…"; }});
+    } else {
+      setTimeout(()=>{ if(aiCtl) $("#busyText").textContent = "시화를 엮고 있어요… (30초~1분쯤 걸려요)"; }, 6000);
+      out = await askServer(aiCtl.signal);
+    }
+    S.layout = sanitize(out);
+    S.ai = { concept: String(out?.concept||""), explanation: String(out?.explanation||""), roles: Array.isArray(out?.word_roles)?out.word_roles.map(String).slice(0,3):[], questions: Array.isArray(out?.questions)?out.questions.map(String).slice(0,3):[] };
+    variation++; selected=null; await afterLayout(); setStatus("완성! 그림 글꼴을 누르면 크기·기울기를 바꿀 수 있고, 시와 제목은 끌어서 옮길 수 있어요.");
+  }catch(e){
+    const code = e && e.code;
+    const msg = {cancelled:"멈췄어요.", not_granted:"Claude 사용을 허락하지 않아 AI 조합을 할 수 없어요. ‘규칙으로 배치’를 써 보세요.", rate_limited:"요청이 몰렸어요. 잠시 뒤 다시 눌러 주세요.", invalid_json:"AI의 답을 읽지 못했어요. 한 번 더 눌러 주세요.", images_unavailable:"이 화면에서는 이미지를 AI에게 보낼 수 없어요. ‘규칙으로 배치’를 써 보세요.", image_rejected:"그림 하나를 AI가 받지 못했어요. 다른 사진으로 다시 올려 주세요.", prompt_too_large:"시가 너무 길어요. 일부를 줄여 주세요.",
+      bad_code:"수업 코드가 맞지 않아요. 선생님께 다시 확인해 주세요.", network:"AI 서버에 연결하지 못했어요. 인터넷 연결이나 AI 서버 주소를 확인해 주세요.", too_many:"지금 요청이 많아요. 1분쯤 뒤에 다시 눌러 주세요.", origin:"이 주소에서는 AI 서버를 쓸 수 없어요. 선생님이 AI 서버 설정(ALLOWED_ORIGINS)을 확인해야 해요.", upstream:"AI가 잠시 응답하지 않아요. 조금 뒤 다시 눌러 주세요.", bad_request:"보낸 내용에 문제가 있어요. 그림과 시를 확인해 주세요."}[code] || "AI 조합 중 문제가 생겼어요. 잠시 뒤 다시 시도하거나 ‘규칙으로 배치’를 써 보세요.";
+    setStatus(msg, code!=="cancelled");
+  }finally{ showBusy(false); aiCtl=null; updateAll(); }
+}
+async function afterLayout(){ syncEditPanel(); renderExplain(); $("#editPanel").hidden=false; updateAll(); persist(); await draw(); }
+function renderExplain(){
+  const box = $("#explain"); const a = S.ai;
+  if (!a || (!a.explanation && !a.roles.length)) { box.hidden = true; return; }
+  const fl = filled();
+  box.innerHTML = `<div class="tag">AI 해설</div>${a.concept?`<h3 style="margin-top:6px">${esc(a.concept)}</h3>`:""}<p>${esc(a.explanation)}</p>
+   ${a.roles.length?`<h3>시어마다 맡은 역할</h3><ol>${a.roles.map((r,k)=>`<li><b>${esc(fl[k]?.m.word||"")}</b> ${esc(r)}</li>`).join("")}</ol>`:""}
+   ${a.questions.length?`<h3>함께 이야기해 봐요</h3><ol>${a.questions.map(q=>`<li>${esc(q)}</li>`).join("")}</ol>`:""}`;
+  box.hidden = false;
+}
+
+/* ---------- drawing ---------- */
+const boxes = {words:[], poem:null, title:null};
+function rng(seed){ let s = seed*9301+49297; return ()=>{ s=(s*9301+49297)%233280; return s/233280; }; }
+async function ensureFonts(L){
+  const jobs = [];
+  const add = (id, text, size) => { const f = FONTS[id]; if (f && text) jobs.push(document.fonts.load(`${f.w} ${Math.round(size)}px "${f.fam}"`, text).catch(()=>{})); };
+  add(L.poem.font, S.poem, L.poem.size); add(L.title.font, S.title, L.title.size); add("dodum", (S.source||"")+S.members.map(m=>m.name).join(""), 22);
+  await Promise.all(jobs);
+}
+function wrapLines(ctx, maxW){
+  const out = [];
+  for (const raw of poemLines()){
+    if (!raw.trim()){ out.push({gap:true}); continue; }
+    const words = raw.trim().split(/\s+/); let cur = "";
+    for (const w of words){
+      const t = cur ? cur+" "+w : w;
+      if (ctx.measureText(t).width <= maxW) { cur = t; continue; }
+      if (cur) out.push({text:cur});
+      if (ctx.measureText(w).width > maxW){ let part=""; for (const ch of w){ if (ctx.measureText(part+ch).width>maxW){ out.push({text:part}); part=ch; } else part+=ch; } cur = part; }
+      else cur = w;
+    }
+    if (cur) out.push({text:cur, end:true});
+  }
+  while (out.length && out[out.length-1].gap) out.pop();
+  return out;
+}
+function drawDeco(ctx, d, seed){
+  ctx.save(); ctx.globalAlpha = d.opacity; ctx.fillStyle = d.color; ctx.strokeStyle = d.color;
+  const cx=d.x*W, cy=d.y*H, R=d.size*W, r=rng(seed+1);
+  const scatter = (fn) => { for (let k=0;k<d.count;k++){ const a=r()*Math.PI*2, dist=Math.sqrt(r())*R; fn(cx+Math.cos(a)*dist, cy+Math.sin(a)*dist, .5+r()); } };
+  const star = (x,y,s,n=5,inner=.45)=>{ ctx.beginPath(); for(let k=0;k<n*2;k++){ const rr=k%2?s*inner:s, a=-Math.PI/2+k*Math.PI/n; ctx.lineTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr);} ctx.closePath(); ctx.fill(); };
+  switch(d.shape){
+    case "circle": ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.fill(); break;
+    case "ring": ctx.lineWidth=Math.max(3,R*.06); ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.stroke(); break;
+    case "line": ctx.translate(cx,cy); ctx.rotate(d.rotation*Math.PI/180); ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(-R,0); ctx.lineTo(R,0); ctx.stroke(); break;
+    case "wave": ctx.translate(cx,cy); ctx.rotate(d.rotation*Math.PI/180); ctx.lineWidth=5; ctx.lineCap="round";
+      for (let k=0;k<Math.min(d.count,6);k++){ ctx.beginPath(); for(let x=-R;x<=R;x+=6){ const y=k*28+Math.sin(x/(R*.18+20)+k)*R*.06; x===-R?ctx.moveTo(x,y):ctx.lineTo(x,y);} ctx.stroke(); } break;
+    case "dots": scatter((x,y,s)=>{ ctx.beginPath(); ctx.arc(x,y,6*s+3,0,Math.PI*2); ctx.fill(); }); break;
+    case "star": scatter((x,y,s)=>star(x,y,14*s+6)); break;
+    case "spark": scatter((x,y,s)=>star(x,y,20*s+8,4,.22)); break;
+    case "snow": ctx.lineWidth=3; ctx.lineCap="round"; scatter((x,y,s)=>{ const z=9*s+5; for(let k=0;k<3;k++){ const a=k*Math.PI/3; ctx.beginPath(); ctx.moveTo(x-Math.cos(a)*z,y-Math.sin(a)*z); ctx.lineTo(x+Math.cos(a)*z,y+Math.sin(a)*z); ctx.stroke(); } }); break;
+    case "petal": scatter((x,y,s)=>{ ctx.save(); ctx.translate(x,y); ctx.rotate(r()*Math.PI); ctx.beginPath(); ctx.ellipse(0,0,18*s+8,8*s+4,0,0,Math.PI*2); ctx.fill(); ctx.restore(); }); break;
+    case "rain": ctx.lineWidth=3; ctx.lineCap="round"; scatter((x,y,s)=>{ ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x-8*s,y+34*s+12); ctx.stroke(); }); break;
+    case "moon": ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.fill(); ctx.globalCompositeOperation="destination-out"; ctx.globalAlpha=1; ctx.beginPath(); ctx.arc(cx+R*.42,cy-R*.18,R*.9,0,Math.PI*2); ctx.fill(); break;
+    case "cloud": for (const [dx,dy,s] of [[-.5,.1,.45],[0,-.1,.6],[.5,.1,.45],[0,.2,.5]]){ ctx.beginPath(); ctx.arc(cx+dx*R,cy+dy*R,s*R,0,Math.PI*2); ctx.fill(); } break;
+  }
+  ctx.restore();
+}
+function drawTexture(ctx, kind){
+  if (kind==="none") return;
+  const r = rng(7); ctx.save();
+  const n = kind==="grain" ? 9000 : 4200;
+  for (let k=0;k<n;k++){ ctx.globalAlpha = kind==="grain" ? .05 : .035; ctx.fillStyle = r()>.5 ? "#000" : "#fff"; ctx.fillRect(r()*W, r()*H, kind==="grain"?1.6:2.4, kind==="grain"?1.6:2.4); }
+  if (kind==="paper"){ ctx.globalAlpha=.04; ctx.strokeStyle="#000"; ctx.lineWidth=1; for(let k=0;k<70;k++){ const y=r()*H; ctx.beginPath(); ctx.moveTo(0,y); ctx.bezierCurveTo(W*.3,y+r()*8-4,W*.7,y+r()*8-4,W,y+r()*6-3); ctx.stroke(); } }
+  ctx.restore();
+}
+let drawing = false, pending = false;
+async function draw(opts={}){
+  const L = S.layout; const cv = $("#art"); const ctx = cv.getContext("2d");
+  if (!L){ drawEmpty(ctx); return; }
+  if (drawing && !opts.export){ pending = true; return; }
+  drawing = true;
+  try{
+  await ensureFonts(L);
+  ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,W,H);
+  const a = L.background.angle*Math.PI/180, dx=Math.sin(a)*H/2, dy=-Math.cos(a)*H/2;
+  const g = ctx.createLinearGradient(W/2-dx,H/2-dy,W/2+dx,H/2+dy);
+  const cs = L.background.colors; cs.forEach((c,k)=>g.addColorStop(cs.length===1?0:k/(cs.length-1), c)); if (cs.length===1) g.addColorStop(1,cs[0]);
+  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+  drawTexture(ctx, L.texture);
+  if (L.showDeco) L.decorations.forEach((d,k)=>drawDeco(ctx,d,k*13));
+
+  // title
+  const T = L.title; ctx.textBaseline="top";
+  if (S.title.trim()){
+    ctx.font = `${FONTS[T.font].w} ${T.size}px "${FONTS[T.font].fam}", serif`; ctx.fillStyle=T.color; ctx.textAlign=T.align;
+    const tw = ctx.measureText(S.title).width; ctx.fillText(S.title, T.x*W, T.y*H);
+    const left = T.align==="left"?T.x*W : T.align==="center"? T.x*W-tw/2 : T.x*W-tw;
+    boxes.title = {x:left, y:T.y*H, w:tw, h:T.size*1.15};
+    if (S.source){ ctx.font = `400 24px "${FONTS.dodum.fam}", sans-serif`; ctx.globalAlpha=.8; ctx.fillText(S.source, T.x*W, T.y*H+T.size*1.18); ctx.globalAlpha=1; }
+  } else boxes.title=null;
+
+  // poem with students' typography drawn in place of the chosen words
+  const P = L.poem; let res, size = P.autoFit===false ? P.size : Math.round(Math.min(64, P.size*1.45));
+  const room = H*.95 - P.y*H;
+  if (!(drag && L._fitSize)){
+    for(;;){ res = layoutPoem(ctx, L, size); if (res.height <= room || size<=18) break; size -= 1; }
+  } else { size = L._fitSize; res = layoutPoem(ctx, L, size); }
+  L._fitSize = size; boxes.words = [];
+  let y = P.y*H; const maxW = P.width*W;
+  const lum = c => { const n=parseInt(c.slice(1),16); return (.299*(n>>16&255)+.587*(n>>8&255)+.114*(n&255))/255; };
+  const glow = L.glow!==false && L.background.colors.reduce((a,c)=>a+lum(c),0)/L.background.colors.length < .5;
+  ctx.font = `${FONTS[P.font].w} ${size}px "${FONTS[P.font].fam}", serif`; ctx.textBaseline="middle"; ctx.textAlign="left"; ctx.fillStyle=P.color;
+  for (const ln of res.lines){
+    if (ln.gap){ y += ln.h; continue; }
+    let x = P.align==="left" ? P.x*W : P.align==="center" ? P.x*W+(maxW-ln.w)/2 : P.x*W+maxW-ln.w;
+    const mid = y + ln.h/2;
+    ln.tokens.forEach((tok,ti)=>{
+      if (ti>0) x += res.space;
+      for (const pc of tok){
+        if (pc.img){
+          const im = imgCache[pc.img.index];
+          ctx.save(); ctx.translate(x+pc.w/2, mid); ctx.rotate(pc.img.rotation*Math.PI/180);
+          if (glow){ ctx.shadowColor="rgba(255,255,255,.9)"; ctx.shadowBlur=size*.5; ctx.drawImage(im, -pc.w/2, -pc.h/2, pc.w, pc.h); ctx.shadowBlur=size*.18; }
+          ctx.drawImage(im, -pc.w/2, -pc.h/2, pc.w, pc.h); ctx.restore();
+          boxes.words.push({index:pc.img.index, x, y:mid-pc.h/2, w:pc.w, h:pc.h});
+        } else { ctx.fillStyle=P.color; ctx.fillText(pc.t, x, mid + size*.04); }
+        x += pc.w;
+      }
+    });
+    y += ln.h;
+  }
+  boxes.poem = {x:P.x*W, y:P.y*H, w:maxW, h:res.height};
+  ctx.textBaseline="top";
+
+  // caption
+  const names = S.members.filter(m=>m.img&&m.name).map(m=>m.name).join(" · ");
+  const cap = names;
+  if (cap){ ctx.font = `400 22px "${FONTS.dodum.fam}", sans-serif`; ctx.textAlign="right"; ctx.textBaseline="alphabetic"; ctx.fillStyle=P.color; ctx.globalAlpha=.7; ctx.fillText(cap, W-40, H-30); ctx.globalAlpha=1; }
+
+  if (!opts.export && selected){
+    const b = selected.type==="word" ? boxes.words.find(x=>x.index===selected.index) : boxes[selected.type];
+    if (b){ ctx.save(); ctx.setLineDash([12,8]); ctx.lineWidth=3; ctx.strokeStyle="#1F5FAD"; ctx.strokeRect(b.x-8,b.y-8,b.w+16,b.h+16); ctx.restore(); }
+  }
+  } finally { drawing = false; if (pending){ pending=false; requestAnimationFrame(()=>draw()); } }
+}
+function inlineSpecs(L){
+  return L.words.map(w=>({...w, match:findInPoem(S.members[w.index]?.word)})).filter(w=>w.match && imgCache[w.index]);
+}
+function layoutPoem(ctx, L, size){
+  const P = L.poem, maxW = P.width*W, lhText = size*P.lineHeight;
+  ctx.font = `${FONTS[P.font].w} ${size}px "${FONTS[P.font].fam}", serif`;
+  const space = ctx.measureText(" ").width || size*.3;
+  const specs = inlineSpecs(L).sort((a,b)=>b.match.length-a.match.length);
+  const used = new Set();
+  const imgPiece = sp => { const im = imgCache[sp.index]; let h = sp.scale*size, w = h*im.naturalWidth/im.naturalHeight; if (w > maxW*.96){ w = maxW*.96; h = w*im.naturalHeight/im.naturalWidth; } return {img:sp, w, h}; };
+  const splitToken = tok => {
+    const out=[]; let i=0;
+    while (i<tok.length){
+      let best=null;
+      for (const sp of specs){ if (!L.matchAll && used.has(sp.index)) continue; const k=tok.indexOf(sp.match,i); if (k>=0 && (!best || k<best.k)) best={k,sp}; }
+      if (!best){ out.push({t:tok.slice(i)}); break; }
+      if (best.k>i) out.push({t:tok.slice(i,best.k)});
+      out.push(imgPiece(best.sp)); used.add(best.sp.index); i = best.k+best.sp.match.length;
+    }
+    for (const pc of out) if (pc.t!==undefined) pc.w = ctx.measureText(pc.t).width;
+    return out;
+  };
+  const lines=[]; let height=0;
+  const push = (tokens) => {
+    const w = tokens.reduce((s,t,k)=>s+(k?space:0)+t.reduce((a,p)=>a+p.w,0),0);
+    const ih = Math.max(0,...tokens.flat().filter(p=>p.img).map(p=>p.h*1.08));
+    const h = Math.max(lhText, ih); lines.push({tokens, w, h}); height += h;
+  };
+  for (const raw of poemLines()){
+    if (!raw.trim()){ if (lines.length && !lines[lines.length-1].gap){ lines.push({gap:true, h:lhText*.6}); height += lhText*.6; } continue; }
+    let cur=[], curW=0;
+    for (const word of raw.trim().split(/\s+/)){
+      let tok = splitToken(word); let tw = tok.reduce((a,p)=>a+p.w,0);
+      if (tw > maxW && tok.length===1 && tok[0].t!==undefined){ // 아주 긴 낱말은 글자 단위로 나눔
+        let part=""; for (const ch of tok[0].t){ if (ctx.measureText(part+ch).width>maxW && part){ if(cur.length){push(cur);cur=[];curW=0;} push([[{t:part,w:ctx.measureText(part).width}]]); part=ch; } else part+=ch; }
+        tok=[{t:part,w:ctx.measureText(part).width}]; tw=tok[0].w;
+      }
+      const add = (cur.length?space:0)+tw;
+      if (cur.length && curW+add > maxW){ push(cur); cur=[tok]; curW=tw; }
+      else { cur.push(tok); curW+=add; }
+    }
+    if (cur.length) push(cur);
+  }
+  while (lines.length && lines[lines.length-1].gap){ height -= lines.pop().h; }
+  return {lines, height, space};
+}
+function drawEmpty(ctx){
+  ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,W,H);
+  const cols=["#C0392B","#E8A818","#1F5FAD","#3E9A4A"];
+  ctx.fillStyle="#F2F4F7"; ctx.fillRect(0,0,W,H);
+  cols.forEach((c,k)=>{ ctx.fillStyle=c; ctx.globalAlpha=.85; ctx.fillRect(W/2-130+(k%2)*134, H/2-170+Math.floor(k/2)*94, 126, 86); });
+  ctx.globalAlpha=1; ctx.fillStyle="#586473"; ctx.textAlign="center"; ctx.textBaseline="top";
+  ctx.font = `500 40px "Hahmlet", serif`; ctx.fillText("여기에 시화가 완성돼요", W/2, H/2+60);
+  ctx.font = `400 28px "IBM Plex Sans KR", sans-serif`; ctx.fillText("시를 쓰고 글꼴 이미지를 올린 뒤", W/2, H/2+128); ctx.fillText("‘AI로 시화 완성하기’를 누르세요", W/2, H/2+170);
+}
+
+/* ---------- editing ---------- */
+function canvasPt(e){ const r = $("#art").getBoundingClientRect(); return {x:(e.clientX-r.left)*W/r.width, y:(e.clientY-r.top)*H/r.height}; }
+function hit(p){
+  for (let k=boxes.words.length-1;k>=0;k--){ const b=boxes.words[k]; if (p.x>=b.x&&p.x<=b.x+b.w&&p.y>=b.y&&p.y<=b.y+b.h) return {type:"word", index:b.index}; }
+  for (const t of ["title","poem"]){ const b=boxes[t]; if (b && p.x>=b.x-10&&p.x<=b.x+b.w+10&&p.y>=b.y-10&&p.y<=b.y+b.h+10) return {type:t}; }
+  return null;
+}
+let drag=null;
+function bindCanvas(){
+  const cv = $("#art");
+  cv.addEventListener("pointerdown", e=>{
+    if (!S.layout) return; const p = canvasPt(e); const h = hit(p); selected = h; syncSel();
+    if (h){ const o = h.type==="word" ? S.layout.poem : target(h); drag = {p, o, ox:o.x, oy:o.y}; cv.setPointerCapture(e.pointerId); cv.style.cursor="grabbing"; }
+    draw();
+  });
+  cv.addEventListener("pointermove", e=>{
+    if (!drag || !selected) return; const p = canvasPt(e); const o = drag.o;
+    o.x = clamp(drag.ox + (p.x-drag.p.x)/W, 0, 1, o.x); o.y = clamp(drag.oy + (p.y-drag.p.y)/H, 0, 1, o.y); draw();
+  });
+  const end = ()=>{ if(drag){ drag=null; persist(); } cv.style.cursor="grab"; };
+  cv.addEventListener("pointerup", end); cv.addEventListener("pointercancel", end);
+}
+function target(h){ return h.type==="word" ? S.layout.words.find(w=>w.index===h.index) : S.layout[h.type]; }
+function syncSel(){
+  const lab = $("#selLabel"), ctr = $("#selCtrls"), size = $("#selSize"), rot = $("#selRot");
+  if (!selected){ lab.textContent = "시화 속 글꼴·시·제목을 눌러 고르고, 끌어서 옮겨 보세요."; ctr.hidden = true; return; }
+  const o = target(selected); ctr.hidden=false;
+  if (selected.type==="word"){ lab.textContent = `고른 것: 시어 ‘${S.members[selected.index].word||"글꼴 "+(selected.index+1)}’`; size.min=1; size.max=4.5; size.step=.1; size.value=o.scale; lab.textContent += " — 시 속 그림 글꼴 (끌면 시 전체가 함께 움직여요)"; $("#rotWrap").hidden=false; rot.value=o.rotation; }
+  else if (selected.type==="poem"){ lab.textContent = "고른 것: 시 본문 (처음엔 빈자리에 맞춰 크기가 자동으로 정해져요. 크기를 직접 바꾸면 그 크기로 고정돼요)"; size.min=18; size.max=64; size.step=1; size.value=Math.round(S.layout._fitSize||o.size); $("#rotWrap").hidden=true; }
+  else { lab.textContent = "고른 것: 제목"; size.min=36; size.max=130; size.step=1; size.value=o.size; $("#rotWrap").hidden=true; }
+}
+function syncEditPanel(){
+  const L = S.layout; if (!L) return;
+  $("#poemFont").value = L.poem.font; $("#titleFont").value = L.title.font; $("#poemColor").value = L.poem.color;
+  $("#bg0").value = L.background.colors[0]; $("#bg1").value = L.background.colors[L.background.colors.length-1];
+  $("#hl").checked = L.matchAll!==false; $("#deco").checked = L.showDeco!==false; syncSel();
+}
+function bindEdit(){
+  const opts = Object.entries(FONTS).map(([k,f])=>`<option value="${k}">${f.fam} · ${f.desc}</option>`).join("");
+  $("#poemFont").innerHTML = opts; $("#titleFont").innerHTML = opts;
+  $("#selSize").addEventListener("input", e=>{ if(!selected) return; const o=target(selected); if(selected.type==="word") o.scale=+e.target.value; else { o.size=+e.target.value; if(selected.type==="poem") o.autoFit=false; } draw(); persist(); });
+  $("#selRot").addEventListener("input", e=>{ if(selected?.type!=="word") return; target(selected).rotation=+e.target.value; draw(); persist(); });
+  $("#poemFont").addEventListener("change", e=>{ S.layout.poem.font=e.target.value; draw(); persist(); });
+  $("#titleFont").addEventListener("change", e=>{ S.layout.title.font=e.target.value; draw(); persist(); });
+  $("#poemColor").addEventListener("input", e=>{ S.layout.poem.color=e.target.value; draw(); persist(); });
+  $("#bg0").addEventListener("input", e=>{ S.layout.background.colors[0]=e.target.value; draw(); persist(); });
+  $("#bg1").addEventListener("input", e=>{ const c=S.layout.background.colors; c[c.length-1]=e.target.value; if(c.length===1) c.push(e.target.value); draw(); persist(); });
+  $("#hl").addEventListener("change", e=>{ S.layout.matchAll=e.target.checked; draw(); persist(); });
+  $("#deco").addEventListener("change", e=>{ S.layout.showDeco=e.target.checked; draw(); persist(); });
+  $("#saveBtn").addEventListener("click", savePNG);
+  $("#bigBtn").addEventListener("click", async ()=>{ await draw({export:true}); openOverlay($("#art").toDataURL("image/png"), S.title||""); draw(); });
+  $("#closeOverlay").addEventListener("click", ()=>{ $("#overlay").hidden=true; });
+  document.addEventListener("keydown", e=>{ if(e.key==="Escape") $("#overlay").hidden=true; });
+}
+function openOverlay(src, msg){ $("#overlayImg").src=src; $("#overlayMsg").textContent=msg||""; $("#overlay").hidden=false; $("#closeOverlay").focus(); }
+async function savePNG(){
+  await draw({export:true}); const cv=$("#art");
+  const blob = await new Promise(r=>cv.toBlob(r,"image/png"));
+  const name = `시화_${(S.title||"제목없음").replace(/[\\/:*?"<>|\s]+/g,"_")}.png`;
+  let saved=false;
+  if (downloads && blob){ try{ await downloads.save({filename:name, data:blob}); saved=true; setStatus("저장했어요."); }catch(e){ if(e?.code==="cancelled"||e?.code==="declined"){ setStatus("저장을 취소했어요."); saved=true; } } }
+  if (!saved && !window.claude && blob){ try{ const u=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u), 4000); saved=true; setStatus("저장했어요. 다운로드 폴더를 확인하세요."); }catch(e){} }
+  if (!saved) openOverlay(cv.toDataURL("image/png"), "이미지를 길게 누르거나 오른쪽 클릭해서 저장하세요.");
+  draw();
+}
+
+/* ---------- misc ---------- */
+function setStatus(t, err){ const s=$("#status"); s.textContent=t; s.classList.toggle("err", !!err); }
+function showBusy(on, t){ $("#busy").hidden=!on; if(t) $("#busyText").textContent=t; $("#aiBtn").disabled=on; }
+
+function bindReset(){
+  const wrap = $("#resetWrap");
+  const render = (confirming) => {
+    wrap.innerHTML = confirming
+      ? `<span>지금 내용이 모두 지워져요.</span><button class="btn primary" id="yesReset" type="button">지우고 시작</button><button class="btn" id="noReset" type="button">취소</button>`
+      : `<button class="btn" id="resetBtn" type="button">새 모둠 시작</button>`;
+    if (confirming){ $("#yesReset").onclick = doReset; $("#noReset").onclick = ()=>render(false); }
+    else $("#resetBtn").onclick = ()=> S.example ? doReset() : render(true);
+  };
+  render(false);
+}
+function bindBottomReset(){
+  const top = document.createElement("div"); top.className="actions"; top.style.cssText="justify-content:flex-end;margin-top:24px";
+  top.innerHTML = `<span class="confirm" id="resetWrap2"></span>`; document.querySelector(".wrap").appendChild(top);
+  const w2 = $("#resetWrap2");
+  const r2 = (c) => { w2.innerHTML = c ? `<span class="meta">이 기기의 작업을 모두 지울까요?</span><button class="btn primary" type="button" id="y2">지우기</button><button class="btn" type="button" id="n2b">취소</button>` : `<button class="btn" type="button" id="r2">처음부터 다시 (새 모둠)</button>`;
+    if (c){ $("#y2").onclick = doReset; $("#n2b").onclick = ()=>r2(false); } else $("#r2").onclick = ()=>r2(true); };
+  r2(false); bottomRender = r2;
+}
+function doReset(){
+  S = {example:false, title:"", source:"", poem:"", members:[blankMember(),blankMember(),blankMember()], wish:"", layout:null, ai:null};
+  imgCache.fill(null); selected=null; variation=0;
+  for (const id of ["title","source","poem","wish"]) $("#"+id).value="";
+  document.querySelectorAll(".mcard").forEach((el,i)=>el.replaceWith(memberCard(i)));
+  $("#explain").hidden=true; $("#editPanel").hidden=true; setStatus("");
+  bindReset(); bottomRender && bottomRender(false);
+  updateAll(); draw(); persist(); location.hash="#s1";
+}
+
+/* ---------- example (original poem, procedurally drawn typography) ---------- */
+async function makeExampleImage(word, quad, style){
+  const m = MOODS[quad]; const fam = style.font;
+  await document.fonts.load(`${style.weight||400} 200px "${fam}"`, word).catch(()=>{});
+  const c=document.createElement("canvas"); c.width=760; c.height=420; const x=c.getContext("2d");
+  x.fillStyle="#fff"; x.fillRect(0,0,c.width,c.height);
+  x.textBaseline="middle"; x.font=`${style.weight||400} ${style.size}px "${fam}"`;
+  const chars=[...word]; const widths=chars.map(ch=>x.measureText(ch).width); const total=widths.reduce((a,b)=>a+b,0)+style.track*(chars.length-1);
+  let px=(c.width-total)/2;
+  chars.forEach((ch,k)=>{ x.save(); const cy=c.height/2+(style.drop||0)*k; x.translate(px+widths[k]/2, cy); x.rotate((style.rot||0)*(k%2?1:-1)*Math.PI/180 + (style.lean||0)*Math.PI/180);
+    x.fillStyle = m.base; x.textAlign="center"; x.fillText(ch,0,0); x.restore(); px+=widths[k]+style.track; });
+  x.fillStyle=m.base; x.strokeStyle=m.base;
+  if (style.extra==="flame"){ for(let k=0;k<5;k++){ const fx=c.width/2-120+k*60, fy=70+(k%2)*18; x.beginPath(); x.moveTo(fx,fy-40); x.quadraticCurveTo(fx+22,fy,fx,fy+22); x.quadraticCurveTo(fx-22,fy,fx,fy-40); x.fillStyle=k%2?m.base:"#C0392B"; x.fill(); } }
+  if (style.extra==="stars"){ x.fillStyle=m.base; for(const [sx,sy,s] of [[120,90,22],[640,110,16],[600,330,24],[150,330,14],[380,60,12]]){ x.beginPath(); for(let k=0;k<8;k++){ const rr=k%2?s*.25:s, a=-Math.PI/2+k*Math.PI/4; x.lineTo(sx+Math.cos(a)*rr, sy+Math.sin(a)*rr);} x.closePath(); x.fill(); } }
+  if (style.extra==="knees"){ x.lineWidth=6; x.lineCap="round"; x.beginPath(); x.arc(640,300,26,0,Math.PI*2); x.stroke(); x.beginPath(); x.arc(640,370,46,Math.PI,0); x.stroke(); }
+  return c.toDataURL("image/jpeg",.92);
+}
+async function loadExample(){
+  S.example = true; S.title = "겨울 창가"; S.source = "예시용 창작시";
+  S.poem = "창문에 맺힌 입김 위로\n누군가 이름을 쓰다 지운다\n\n웅크린 마음 한쪽에\n작은 불씨 하나 남겨 두고\n\n밤하늘엔 별빛이\n천천히 내려앉는다";
+  const spec = [
+    {name:"하늘", word:"웅크린", quad:"blue", emotion:"외로운", mood:"고요하고 차가운", feel:"서늘함", newPoint:"마지막 글자 옆에 무릎을 안은 사람을 둔 것", st:{font:"Gowun Batang", size:150, track:6, drop:18, rot:5, lean:8, extra:"knees"}},
+    {name:"바다", word:"불씨", quad:"yellow", emotion:"희망찬", mood:"작지만 뜨거운", feel:"따끈함", newPoint:"글자 위 획을 불꽃 모양으로 바꾼 것", st:{font:"Black Han Sans", size:190, track:16, rot:4, lean:-6, extra:"flame"}},
+    {name:"나래", word:"별빛", quad:"green", emotion:"평온한", mood:"부드럽고 잔잔한", feel:"반짝임", newPoint:"ㅂ과 ㅊ 둘레에 작은 별을 흩어 놓은 것", st:{font:"Gaegu", weight:700, size:190, track:10, rot:3, extra:"stars"}},
+  ];
+  for (let i=0;i<3;i++){ const s=spec[i]; Object.assign(S.members[i], {name:s.name, word:s.word, quad:s.quad, emotion:s.emotion, mood:s.mood, feel:s.feel, newPoint:s.newPoint, removeBg:true});
+    S.members[i].raw = await makeExampleImage(s.word, s.quad, s.st); S.members[i].img = await processImg(S.members[i].raw, true); await loadCache(i); }
+  S.layout = sanitize({
+    background:{colors:["#D9E3EF","#E9EEF0","#F6EED8"], angle:180}, texture:"paper",
+    decorations:[{shape:"snow",x:.75,y:.12,size:.2,color:"#FFFFFF",opacity:.8,count:14},{shape:"moon",x:.86,y:.08,size:.05,color:"#F3D98B",opacity:.7},{shape:"star",x:.62,y:.5,size:.18,color:"#3E9A4A",opacity:.25,count:8}],
+    words:[{index:0,scale:2.6,rotation:-4},{index:1,scale:3.6,rotation:7},{index:2,scale:3.0,rotation:-3}],
+    title:{x:.08,y:.05,align:"left",font:"song",size:84,color:"#0D2A4F"},
+    poem:{x:.1,y:.21,width:.8,align:"left",font:"gowun",size:40,color:"#1B2A3D",lineHeight:1.7}, matchAll:true,
+  });
+  S.ai = {concept:"차가운 웅크림에서 작은 불씨를 지나 평온한 별빛으로", explanation:"(예시 해설) 시는 파랑의 외로움에서 출발해 노랑의 작은 희망을 거쳐 초록의 평온으로 가라앉아요. 그래서 배경은 위쪽의 서늘한 푸른빛에서 아래쪽의 따뜻한 빛으로 천천히 바뀌게 했어요. 시 속 ‘웅크린’은 작고 낮게 두어 몸을 움츠린 느낌을 살리고, 활력이 높은 ‘불씨’는 가장 크게 키우고 기울여 시 한가운데서 타오르게 했어요.", roles:["시가 시작되는 쓸쓸한 마음을 보여 주는 첫 장면이에요.","차가운 화면 가운데서 온기를 내는 전환점이에요.","시의 마지막 평온을 받아 주는 착지점이에요."], questions:["세 시어의 색이 바뀌는 순서는 시의 감정 흐름과 같은가요?","내 글꼴이 다른 두 글꼴 옆에 놓였을 때 새롭게 보이는 점은 무엇인가요?"]};
+}
+
+/* ---------- boot ---------- */
+async function boot(){
+  bindEdit(); bindCanvas();
+  const restored = restore();
+  bindPoem();
+  const box = $("#members"); S.members.forEach((_,i)=>box.appendChild(memberCard(i)));
+  bindReset(); bindBottomReset();
+  $("#aiBtn").addEventListener("click", runAI);
+  $("#ruleBtn").addEventListener("click", async ()=>{ S.layout = ruleLayout(); S.ai = null; selected=null; await afterLayout(); setStatus("무드미터 규칙으로 배치했어요. 끌어서 다듬어 보세요."); });
+  $("#stopBtn").addEventListener("click", ()=>aiCtl?.abort());
+  if (restored){ for (let i=0;i<3;i++){ const m=S.members[i]; if (m.raw && !m.img) m.img = await processImg(m.raw, m.removeBg, m.strength ?? 50, m.ink ?? 70); await loadCache(i); } }
+  else { await loadExample(); }
+  for (const id of ["title","source","poem","wish"]) $("#"+id).value = S[id]||"";
+  updateAll();
+  if (S.layout){ syncEditPanel(); renderExplain(); $("#editPanel").hidden=false; }
+  await document.fonts.ready; draw();
+  try{
+    if (window.claude?.use){
+      claude.use("downloads").then(d=>{ downloads=d; }).catch(()=>{});
+      const s = await claude.use("sample");
+      if (s){ const lim = await s.limits().catch(()=>null); if (lim?.images) sample = s; else setStatus("이 화면에서는 AI에게 이미지를 보낼 수 없어 ‘규칙으로 배치’만 쓸 수 있어요."); }
+    }
+  }catch(e){}
+  if (!sample){
+    $("#aiConn").hidden = false;
+    try{ $("#classCode").value = localStorage.getItem("sihwa-class-code")||""; $("#aiServerInput").value = aiServer(); }catch(e){}
+    $("#classCode").addEventListener("input", e=>{ try{ localStorage.setItem("sihwa-class-code", e.target.value.trim()); }catch(_){} });
+    $("#aiServerInput").addEventListener("change", e=>{ try{ localStorage.setItem("sihwa-ai-server", e.target.value.trim()); }catch(_){} updateAll(); setStatus(aiServer()?"AI 서버 주소를 저장했어요.":"AI 서버 주소를 지웠어요."); });
+    if (aiServer()) setStatus("");
+    else setStatus("AI 서버가 아직 연결되지 않았어요. ‘규칙으로 배치’로 시화를 만들 수 있어요.");
+  }
+  updateAll();
+}
+boot();
+})();
+</script>
+</body>
+</html>
