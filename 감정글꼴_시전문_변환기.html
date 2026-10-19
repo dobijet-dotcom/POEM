@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>감정 글꼴 시판</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Jua&family=Do+Hyeon&family=Black+Han+Sans&family=Gowun+Dodum&display=swap">
+<style>
+/* 레이아웃: 왼쪽 입력 패널 + 오른쪽 A4 시판. 기본은 학생들이 쓴 하늘색 색지 그대로, 글자는 아이들 획을 본뜬 외곽선 손글씨 */
+:root{
+  --paper:#13C1EE;
+  --ink:#143C82;
+  --c-blue:#1A63C4; --c-purple:#5A2D91; --c-green:#45A84A; --c-brown:#9C5A3C;
+  --panel:#F4F7FA; --panel-line:#D3DDE6; --panel-ink:#1E2A33;
+  --hand:"Gaegu","Nanum Pen Script",cursive;
+  --ui:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#E3EAF0;color:var(--panel-ink);font-family:var(--ui)}
+.wrap{display:grid;grid-template-columns:minmax(280px,370px) 1fr;gap:24px;padding:24px max(16px,env(safe-area-inset-right,0px)) 24px max(16px,env(safe-area-inset-left,0px))}
+@media (max-width:900px){.wrap{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--panel-line);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:14px;align-self:start;position:sticky;top:16px;min-width:0}
+.panel h1{font-family:"Jua",var(--ui);font-weight:400;font-size:21px;margin:0;color:var(--c-purple)}
+.panel h2{font-family:"Jua",var(--ui);font-weight:400;font-size:17px;margin:6px 0 0;color:var(--c-purple);border-top:1px dashed var(--panel-line);padding-top:12px}
+.help,.hint{margin:0;font-size:12.5px;line-height:1.55;color:#4A5A66}
+.hint code{background:#fff;border:1px solid var(--panel-line);border-radius:4px;padding:0 4px}
+label{font-size:13px;font-weight:700;display:flex;flex-direction:column;gap:6px;min-width:0}
+input[type=text],textarea,select{font:inherit;font-weight:400;font-size:14px;padding:8px 10px;border:1px solid var(--panel-line);border-radius:6px;background:#fff;color:inherit;min-width:0}
+select{font-size:13px;padding:6px}
+textarea{min-height:220px;resize:vertical;line-height:1.6}
+.row{display:flex;gap:10px}
+.row label{flex:1}
+input[type=range]{width:100%}
+.check{flex-direction:row;gap:8px;align-items:center;font-weight:400}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.seg label{flex-direction:row;align-items:center;gap:6px;font-weight:400;border:1px solid var(--panel-line);border-radius:8px;padding:8px;background:#fff;cursor:pointer}
+.seg label:has(input:checked){border-color:var(--c-purple);box-shadow:inset 0 0 0 1px var(--c-purple)}
+.emo-row{display:flex;flex-direction:column;gap:5px;padding:8px;border:1px solid var(--panel-line);border-radius:8px;background:#fff}
+.emo-row .top{display:flex;gap:6px;font-size:13px;min-width:0}
+.emo-row b{color:var(--c-purple);flex:none}
+.emo-row span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#4A5A66}
+.emo-row .sels{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+button{font-family:"Jua",var(--ui);font-size:17px;padding:12px;border:0;border-radius:10px;background:var(--c-purple);color:#fff;cursor:pointer;box-shadow:0 3px 0 #3B1A66}
+button.sub{background:#fff;color:var(--c-purple);box-shadow:0 3px 0 #C9B8EE;border:1.5px solid #C9B8EE}
+button:active{transform:translateY(2px)}
+button:disabled{opacity:.55;cursor:wait}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #F2B705;outline-offset:2px}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stage{overflow-x:auto;display:flex;justify-content:center;min-width:0}
+
+/* ── A4 시판 ── */
+.sheet{width:210mm;height:297mm;flex:none;position:relative;overflow:hidden;background:var(--paper);
+  padding:18mm 18mm 14mm;display:flex;flex-direction:column;color:var(--ink);font-family:var(--hand);
+  box-shadow:0 8px 28px rgba(20,40,60,.28)}
+/* 색지 결(스캔한 종이 느낌) */
+.sheet::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.32;mix-blend-mode:multiply;z-index:0;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/><feColorMatrix values='0 0 0 0 .05 0 0 0 0 .45 0 0 0 0 .6 0 0 0 .55 0'/></filter><rect width='240' height='240' filter='url(%23n)'/></svg>")}
+.sheet > .head,.sheet > .poem,.sheet > .card,.sheet > .foot{position:relative;z-index:3}
+.decor,.frame,.char,.waves{display:none}
+
+.head{margin-bottom:7mm}
+.title{font-family:"Jua",sans-serif;font-weight:400;font-size:40pt;line-height:1.15;margin:0;letter-spacing:.03em;text-wrap:balance}
+.title .t{display:inline-block;color:transparent;-webkit-text-stroke:.045em var(--c-purple)}
+.title .t.f{color:var(--c-green)}
+.author{display:inline-block;margin-top:2mm;font-family:var(--hand);font-weight:700;font-size:17pt;color:var(--c-purple);
+  border-bottom:2px solid var(--c-purple);padding:0 1mm}
+
+.poem{flex:1;min-height:0}
+.poem .stanza{margin:0 0 .8em}
+.poem .stanza:last-child{margin-bottom:0}
+.poem .line{display:block;line-height:1.75;word-break:keep-all}
+.w{display:inline-block;white-space:nowrap}
+.ch{display:inline-block}
+/* 아이들 획: 속이 빈 외곽선 글자 + 자모에 따라 군데군데 칠한 칸 */
+.hand-summer{font-family:"Jua",sans-serif}
+.hand-winter{font-family:"Do Hyeon",sans-serif}
+.hand-noon{font-family:"Black Han Sans",sans-serif}
+.hand-summer,.hand-winter,.hand-noon{font-weight:400;color:transparent}
+.kw{display:inline-block;height:2.3em;vertical-align:-.78em;margin:0 .08em;overflow:visible}
+.custom{display:inline-block;font-family:"Black Han Sans",sans-serif;font-size:1.15em;color:var(--c-green);-webkit-text-stroke:.05em var(--c-brown)}
+.emo-tag{display:inline-block;margin-left:.45em;vertical-align:.2em;font-family:var(--hand);font-weight:700;font-size:.5em;line-height:1.1;
+  color:var(--tc);border:2px solid var(--tc);border-radius:1em .7em 1.1em .6em;padding:.05em .55em;-webkit-text-stroke:0;letter-spacing:0;transform:rotate(-3deg)}
+
+.card{margin-top:4mm;display:grid;grid-template-columns:30mm 1fr;gap:4mm;align-items:start;background:rgba(255,255,255,.55);
+  border:2px solid rgba(20,60,130,.55);border-radius:4mm 6mm 3mm 7mm;padding:3mm 4mm;color:var(--ink)}
+.card .meter{width:30mm;height:30mm}
+.card h3{margin:0 0 1mm;font-family:"Jua",sans-serif;font-weight:400;font-size:13pt;color:var(--c-purple)}
+.card h3 b{font-weight:400;color:var(--tc,var(--c-purple))}
+.card p{margin:0 0 1.4mm;font-family:var(--hand);font-weight:700;font-size:12.5pt;line-height:1.45}
+.card ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.6mm;font-family:var(--ui);font-size:7.8pt}
+.card li i{width:2.4mm;height:2.4mm;border-radius:50%;display:inline-block;margin-right:1mm;vertical-align:-.3mm}
+.sheet.no-card .card{display:none}
+.foot{margin-top:4mm;display:flex;justify-content:flex-end;flex-wrap:wrap;gap:3mm;font-family:var(--ui);font-size:8.5pt;color:#0D3567}
+.foot i{width:2.4mm;height:2.4mm;border-radius:50%;display:inline-block;margin-right:1mm;vertical-align:-.3mm}
+
+/* ── 화려하게(선택) ── */
+.sheet.fancy{background:linear-gradient(180deg,#0AA8E8 0%,#22C4F2 45%,#7FE0FA 100%);padding-bottom:44mm}
+.sheet.fancy .decor{display:block;position:absolute;inset:0;pointer-events:none;z-index:1}
+.sheet.fancy .frame{display:block;position:absolute;inset:6mm;border:2.5px dashed rgba(255,255,255,.75);border-radius:9mm;pointer-events:none;z-index:1}
+.sheet.fancy .char{display:block;position:absolute;z-index:2;pointer-events:none}
+.sheet.fancy .waves{display:block;position:absolute;left:0;right:0;bottom:0;height:34mm;z-index:2;pointer-events:none}
+.sheet.fancy .head{padding-right:44mm}
+.sheet.fancy .foot{position:absolute;left:44mm;right:12mm;bottom:9mm;z-index:5}
+.sheet.fancy .foot span{background:#fff;border-radius:99px;padding:1mm 3.4mm}
+.decor span{position:absolute;display:block}.decor svg,.char svg{display:block;width:100%;height:auto}
+.waves svg{display:block;width:100%;height:100%}
+.char.sun{top:7mm;right:8mm;width:44mm}
+.char.flake{right:50mm;top:9mm;width:17mm;transform:rotate(12deg)}
+.char.ring{left:8mm;bottom:5mm;width:29mm;transform:rotate(-8deg);z-index:4}
+.exporting .sheet::before{display:none}
+.pv{position:fixed;inset:0;z-index:50;background:rgba(15,25,40,.72);display:flex;align-items:flex-start;justify-content:center;overflow:auto;
+  padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 16px max(16px,env(safe-area-inset-left,0px))}
+.pv[hidden],[hidden]{display:none!important}
+.pv-box{background:#fff;border-radius:12px;padding:16px;max-width:560px;width:100%;display:flex;flex-direction:column;gap:10px}
+.pv-box h3{margin:0;font-family:"Jua",sans-serif;font-weight:400;color:var(--c-purple);font-size:20px}
+.pv-box p{margin:0;font-size:14px;line-height:1.6}
+.pv-box img{width:100%;height:auto;border:1px solid var(--panel-line);border-radius:6px}
+
+@media print{
+  @page{size:A4;margin:0}
+  body{background:none}
+  .panel{display:none}
+  .wrap{display:block;padding:0}
+  .sheet{box-shadow:none}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="crayon" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" seed="3" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="2.2" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <radialGradient id="sunG" cx=".38" cy=".35" r=".7"><stop offset="0" stop-color="#FFF27A"/><stop offset=".6" stop-color="#C8F04E"/><stop offset="1" stop-color="#3CC453"/></radialGradient>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <aside class="panel">
+    <h1>감정 글꼴로 시 전문 쓰기</h1>
+    <p class="help">시 전문을 붙여 넣으면 학생 세 명이 만든 글꼴의 <b>획과 색</b>을 본떠 시 전체를 다시 씁니다. 연마다 감정을 고르면 그 감정에 맞게 색과 획이 바뀌어요.</p>
+    <div class="row">
+      <label for="t">제목<input id="t" type="text" value="별일 없습니다"></label>
+      <label for="a">시인<input id="a" type="text" value="강성은"></label>
+    </div>
+    <label for="p">시 전문 (연은 빈 줄로 구분)
+      <textarea id="p" spellcheck="false"></textarea>
+    </label>
+
+    <h2>누구의 글꼴로 쓸까</h2>
+    <p class="hint"><b>여름결</b> 파랑 색연필 속 빈 둥근 글자, ㅇ은 하늘색·ㅁ 받침은 초록 칠<br><b>겨울결</b> 보라 사인펜 각진 글자, ㅇ은 연보라·ㅜ는 초록 칠<br><b>대낮결</b> 갈색 외곽선 굵은 글자, ㄷ·ㄴ은 초록 칠<br>연마다 따로 고를 수 있고, '자동'은 그 연에 나오는 시어(여름·겨울·대낮)를 따릅니다.</p>
+    <label for="base">시어가 없는 연의 글꼴
+      <select id="base">
+        <option value="mix">연마다 번갈아</option>
+        <option value="summer">여름결 (김연우)</option>
+        <option value="winter">겨울결 (양민수)</option>
+        <option value="noon">대낮결 (서민영)</option>
+      </select>
+    </label>
+
+    <h2>시 감상 · 연마다 느낀 감정</h2>
+    <p class="hint">무드미터 가로(쾌적함)는 <b>외곽선 색</b>, 세로(활력)는 <b>획</b>을 정해요. 활력이 높으면 굵고 기울고, 낮으면 가늘고 처집니다. 감정을 고르지 않으면 학생 작품의 원래 색 그대로예요. 한 줄만 다르게 하려면 줄 끝에 <code>#슬픈</code>처럼 붙이세요.</p>
+    <div id="emoList" style="display:flex;flex-direction:column;gap:8px"></div>
+    <label for="ov">시 전체에서 느낀 감정<select id="ov"></select></label>
+    <label for="gs">감상 문장<textarea id="gs" style="min-height:90px"></textarea></label>
+    <label class="check" for="showk"><input id="showk" type="checkbox" checked> 시판에 감상 카드 넣기</label>
+
+    <h2>모양</h2>
+    <div class="row">
+      <label for="fs">글자 크기 <input id="fs" type="range" min="10" max="34" value="20"></label>
+      <label for="jt">손글씨 흔들림 <input id="jt" type="range" min="0" max="8" value="3"></label>
+    </div>
+    <label class="check" for="fit"><input id="fit" type="checkbox" checked> 시 길이에 맞게 글자 크기 자동 조절</label>
+    <div class="seg" role="radiogroup" aria-label="바탕">
+      <label for="m1"><input type="radio" name="mode" id="m1" value="plain" checked> 학생 색지 그대로</label>
+      <label for="m2"><input type="radio" name="mode" id="m2" value="fancy"> 캐릭터·꾸밈 넣기</label>
+    </div>
+    <div class="row">
+      <label for="n1">여름 글꼴<input id="n1" type="text" value="김연우"></label>
+      <label for="n2">겨울 글꼴<input id="n2" type="text" value="양민수"></label>
+      <label for="n3">대낮 글꼴<input id="n3" type="text" value="서민영"></label>
+    </div>
+    <div class="btns">
+      <button id="savePdf" type="button">PDF로 저장</button>
+      <button id="savePng" type="button" class="sub">그림(PNG)으로 저장</button>
+    </div>
+    <button id="print" type="button" class="sub" hidden>브라우저 인쇄</button>
+    <p class="hint" id="status" role="status" aria-live="polite"></p>
+  </aside>
+
+  <main class="stage">
+    <article class="sheet" id="sheet">
+      <div class="decor" id="decor"></div>
+      <div class="frame"></div>
+      <div class="char sun" aria-hidden="true"><svg viewBox="-80 -80 160 160">
+        <g stroke-linecap="round"><g id="rays"></g>
+          <circle r="44" fill="url(#sunG)" stroke="var(--c-brown)" stroke-width="3.5"/>
+          <ellipse cx="-15" cy="-2" rx="5" ry="6.5" fill="#1D2B53"/><ellipse cx="15" cy="-2" rx="5" ry="6.5" fill="#1D2B53"/>
+          <circle cx="-13.5" cy="-4.5" r="1.8" fill="#fff"/><circle cx="16.5" cy="-4.5" r="1.8" fill="#fff"/>
+          <ellipse cx="-26" cy="11" rx="7" ry="4.5" fill="#FF6FAE" opacity=".7"/><ellipse cx="26" cy="11" rx="7" ry="4.5" fill="#FF6FAE" opacity=".7"/>
+          <path d="M-11 12 q11 12 22 0" fill="#E2463B" stroke="#1D2B53" stroke-width="3"/></g>
+      </svg></div>
+      <div class="char flake" aria-hidden="true"><svg viewBox="-60 -60 120 120">
+        <g id="arms" stroke="var(--c-purple)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"></g>
+        <polygon id="hex" fill="#fff" stroke="var(--c-purple)" stroke-width="3.5" stroke-linejoin="round"/>
+        <circle cx="-8" cy="-3" r="3.4" fill="#1D2B53"/><circle cx="8" cy="-3" r="3.4" fill="#1D2B53"/>
+        <path d="M-5 6 q5 5 10 0" fill="none" stroke="#1D2B53" stroke-width="2.4" stroke-linecap="round"/>
+      </svg></div>
+      <div class="waves" aria-hidden="true"><svg viewBox="0 0 210 34" preserveAspectRatio="none">
+        <path d="M0 10 Q13 3 26 10 T52 10 T78 10 T104 10 T130 10 T156 10 T182 10 T208 10 V34 H0 Z" fill="#5FB6F5" opacity=".8"/>
+        <path d="M0 16 Q13 9 26 16 T52 16 T78 16 T104 16 T130 16 T156 16 T182 16 T208 16 T234 16 V34 H0 Z" fill="#0B5BD3"/>
+        <path d="M0 16 Q13 9 26 16 T52 16 T78 16 T104 16 T130 16 T156 16 T182 16 T208 16" fill="none" stroke="#fff" stroke-width="1.4" opacity=".85"/>
+      </svg></div>
+      <div class="char ring" aria-hidden="true"><svg viewBox="-75 -75 150 150">
+        <g id="ringSegs"></g>
+        <g transform="translate(0 47)">
+          <ellipse cx="-12" cy="-2" rx="3.8" ry="4.8" fill="#1D2B53"/><ellipse cx="12" cy="-2" rx="3.8" ry="4.8" fill="#1D2B53"/>
+          <path d="M-6 4 q6 7 12 0" fill="none" stroke="#1D2B53" stroke-width="2.6" stroke-linecap="round"/>
+        </g>
+      </svg></div>
+
+      <header class="head">
+        <h2 class="title" id="vt"></h2>
+        <div class="author" id="va"></div>
+      </header>
+      <section class="poem" id="vp"></section>
+      <section class="card" id="card">
+        <svg class="meter" id="meter" viewBox="0 0 100 100" role="img" aria-label="무드미터"></svg>
+        <div>
+          <h3 id="ovline">시 감상</h3>
+          <p id="vgs"></p>
+          <ul id="vlist"></ul>
+        </div>
+      </section>
+      <footer class="foot" id="vc"></footer>
+    </article>
+  </main>
+</div>
+
+<div class="pv" id="pv" hidden role="dialog" aria-modal="true" aria-labelledby="pvT">
+  <div class="pv-box">
+    <h3 id="pvT">완성된 시판</h3>
+    <p><span id="pvWhy"></span> 아래 그림을 <b>휴대폰·태블릿은 길게 눌러 '이미지 저장'</b>, <b>컴퓨터는 마우스 오른쪽 단추 → '이미지를 다른 이름으로 저장'</b>을 눌러 저장하세요. 패들렛에는 저장한 그림을 올리면 돼요.</p>
+    <img id="pvImg" alt="완성된 시판 그림">
+    <button id="pvClose" type="button">닫기</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+function rnd(i){const x=Math.sin(i*12.9898+78.233)*43758.5453;return x-Math.floor(x)}
+function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+
+/* ── '화려하게' 모드용 캐릭터·꾸밈 ── */
+(function(){
+  let rays='';
+  for(let i=0;i<12;i++){const a=i*30*Math.PI/180,c=Math.cos(a),s=Math.sin(a),L=i%2?66:72,col=i%2?'#45A84A':'#FFD23F';
+    rays+=`<line x1="${52*c}" y1="${52*s}" x2="${L*c}" y2="${L*s}" stroke="#9C5A3C" stroke-width="9"/><line x1="${52*c}" y1="${52*s}" x2="${L*c}" y2="${L*s}" stroke="${col}" stroke-width="5"/>`;}
+  $('rays').innerHTML=rays;
+  $('hex').setAttribute('points',[0,60,120,180,240,300].map(a=>{const r=(a+30)*Math.PI/180;return (24*Math.cos(r)).toFixed(1)+','+(24*Math.sin(r)).toFixed(1)}).join(' '));
+  let arms='';
+  for(let i=0;i<6;i++){const a=i*60*Math.PI/180,c=Math.cos(a),s=Math.sin(a);
+    const pent=[0,72,144,216,288].map(b=>{const r=b*Math.PI/180+a;return (46*c+6*Math.cos(r)).toFixed(1)+','+(46*s+6*Math.sin(r)).toFixed(1)}).join(' ');
+    arms+=`<line x1="${22*c}" y1="${22*s}" x2="${40*c}" y2="${40*s}"/><polygon points="${pent}" fill="#E7DBFF"/>`;}
+  $('arms').innerHTML=arms;
+  let segs='';
+  for(let i=0;i<8;i++){const a0=(i*45-90)*Math.PI/180,a1=((i+1)*45-90)*Math.PI/180,R=66,r=27,p=(rr,a)=>`${(rr*Math.cos(a)).toFixed(2)} ${(rr*Math.sin(a)).toFixed(2)}`;
+    segs+=`<path d="M${p(R,a0)} A${R} ${R} 0 0 1 ${p(R,a1)} L${p(r,a1)} A${r} ${r} 0 0 0 ${p(r,a0)} Z" fill="${i%2?'#fff':'#3D9BF0'}" stroke="#1A63C4" stroke-width="2.4"/>`;}
+  $('ringSegs').innerHTML=segs;
+  const cols=['#FFD23F','#FFFFFF','#FF9CC8','#C9F56B']; let html='';
+  for(let i=1;i<=30;i++){const side=i%3,x=side===0?7+rnd(i)*9:side===1?194+rnd(i)*9:20+rnd(i)*120,y=side===2?3+rnd(i+5)*8:14+rnd(i+5)*228,sz=(3+rnd(i+9)*4).toFixed(1);
+    html+=`<span style="width:${sz}mm;left:${x.toFixed(1)}mm;top:${y.toFixed(1)}mm;transform:rotate(${Math.round(rnd(i+3)*90)}deg)"><svg viewBox="-10 -10 20 20"><path d="M0 -9 C1.5 -2 2 -1.5 9 0 C2 1.5 1.5 2 0 9 C-1.5 2 -2 1.5 -9 0 C-2 -1.5 -1.5 -2 0 -9Z" fill="${cols[i%4]}"/></svg></span>`;}
+  $('decor').innerHTML=html;
+})();
+
+/* ── 학생 시어 글꼴(스캔본을 벡터로 다시 그림, 원본 색 그대로) ── */
+const P='var(--paper)';
+const GLYPH={
+ '여름':{hand:'summer',vb:'0 0 220 112',svg:`
+  <g fill="none" stroke="var(--c-blue)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="42" cy="54" r="36" fill="${P}"/><circle cx="42" cy="54" r="17"/>
+    ${[15,75,135,195,255,315].map(a=>{const r=a*Math.PI/180;return `<line x1="${42+17*Math.cos(r)}" y1="${54+17*Math.sin(r)}" x2="${42+36*Math.cos(r)}" y2="${54+36*Math.sin(r)}"/>`}).join('')}
+    <rect x="80" y="38" width="16" height="10" rx="5" fill="${P}"/><rect x="80" y="60" width="16" height="10" rx="5" fill="${P}"/>
+    <rect x="92" y="12" width="13" height="86" rx="6.5" fill="${P}"/>
+  </g>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M128 14 C150 6 196 10 190 24 C184 38 134 30 132 44 C130 56 192 48 198 54" stroke="var(--c-blue)" stroke-width="12"/>
+    <path d="M128 14 C150 6 196 10 190 24 C184 38 134 30 132 44 C130 56 192 48 198 54" stroke="${P}" stroke-width="7"/>
+    <rect x="124" y="64" width="76" height="9" rx="4.5" stroke="var(--c-blue)" stroke-width="3" fill="${P}"/>
+    <rect x="142" y="78" width="40" height="30" rx="8" stroke="var(--c-blue)" stroke-width="3" fill="var(--c-green)"/>
+    <rect x="152" y="86" width="20" height="14" rx="5" stroke="var(--c-blue)" stroke-width="2" fill="${P}"/>
+  </g>`},
+ '겨울':{hand:'winter',vb:'0 0 250 130',svg:`
+  <g fill="${P}" stroke="var(--c-purple)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10 26 C28 10 74 16 82 32 C92 54 74 96 52 112 C44 118 34 110 40 102 C58 82 66 56 60 44 C52 34 30 38 16 38 C6 37 2 30 10 26 Z"/>
+    <path d="M100 40 a10 10 0 0 0 0 20 M100 70 a10 10 0 0 0 0 20"/>
+    <rect x="98" y="16" width="16" height="98" rx="8"/>
+  </g>
+  <g fill="var(--c-purple)">${[[24,28],[38,30],[52,32],[64,40],[68,54],[64,70],[58,84],[50,98]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="1.6"/>`).join('')}</g>
+  <g fill="${P}" stroke="var(--c-purple)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+    ${[0,60,120,180,240,300].map(a=>{const r=a*Math.PI/180,c=Math.cos(r),s=Math.sin(r),x=188,y=36;return `<line x1="${x+20*c}" y1="${y+20*s}" x2="${x+36*c}" y2="${y+36*s}"/><circle cx="${x+40*c}" cy="${y+40*s}" r="4.5"/>`}).join('')}
+    <polygon points="${[0,60,120,180,240,300].map(a=>{const r=(a+30)*Math.PI/180;return (188+21*Math.cos(r))+','+(36+21*Math.sin(r))}).join(' ')}"/>
+  </g>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="146" y="82" width="86" height="16" rx="8" stroke="#2E8FD0" stroke-width="2" fill="${P}"/>
+    ${[154,170,186,202,218].map(x=>`<path d="M${x} 85 h8 l2 4 -4 6 h-6 z" stroke="var(--c-green)" stroke-width="1.8"/>`).join('')}
+    <path d="M186 98 V110 M192 98 V110" stroke="#2E8FD0" stroke-width="1.8"/>
+    <path d="M160 112 H214 V119 H162 V126 H216" stroke="var(--c-purple)" stroke-width="3"/>
+  </g>`},
+ '대낮':{hand:'noon',vb:'0 0 260 122',svg:`
+  <g stroke="var(--c-brown)" stroke-width="2.2" stroke-linecap="round"><path d="M48 6 l3 10 M24 14 l7 9 M10 38 l10 3 M10 74 l10 -3 M24 102 l7 -9 M48 112 l3 -10 M76 104 l-5 -9"/></g>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M74 24 H32 V94 H76" stroke="var(--c-brown)" stroke-width="19"/><path d="M74 24 H32 V94 H76" stroke="var(--c-green)" stroke-width="13"/>
+  </g>
+  <g fill="${P}" stroke="var(--c-brown)" stroke-width="2.6" stroke-linejoin="round">
+    <rect x="96" y="56" width="16" height="8" rx="4"/><rect x="88" y="18" width="11" height="86" rx="5.5"/><rect x="110" y="14" width="11" height="92" rx="5.5"/>
+  </g>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M138 18 V48 H170" stroke="var(--c-brown)" stroke-width="13"/><path d="M138 18 V48 H170" stroke="var(--c-green)" stroke-width="8"/>
+  </g>
+  <g fill="${P}" stroke="var(--c-brown)" stroke-width="2.6" stroke-linejoin="round">
+    <rect x="186" y="34" width="16" height="8" rx="4"/><rect x="178" y="8" width="11" height="58" rx="5.5"/><rect x="134" y="64" width="44" height="9" rx="4.5"/>
+    <path d="M156 72 L134 98 a5 5 0 0 0 8 5 L160 80 Z"/><path d="M156 72 L180 94 a5 5 0 0 1 -6 7 L152 80 Z"/>
+  </g>
+  <g stroke="var(--c-green)" stroke-width="2" stroke-linecap="round" fill="none">
+    <circle cx="226" cy="90" r="17" fill="var(--c-green)" fill-opacity=".55"/>
+    <path d="M216 82 c8 -6 20 -2 22 6 M212 92 c8 6 22 6 28 -4 M218 98 c6 2 12 0 16 -4"/>
+    ${[0,45,90,135,180,225,270,315].map(a=>{const r=a*Math.PI/180;return `<line x1="${226+22*Math.cos(r)}" y1="${90+22*Math.sin(r)}" x2="${226+30*Math.cos(r)}" y2="${90+30*Math.sin(r)}"/>`}).join('')}
+  </g>`}
+};
+function glyphSVG(word){const g=GLYPH[word],[,,w,h]=g.vb.split(' ').map(Number);
+  return `<svg class="kw" viewBox="${g.vb}" style="width:${(2.3*w/h).toFixed(2)}em" role="img" aria-label="${word}"><g filter="url(#crayon)">${g.svg}</g></svg>`;}
+
+/* ── 학생별 획: 외곽선 색, 칠하는 자모 ── */
+// 한글 음절 분해: 초성 0~18, 중성 0~20, 종성 0~27
+function jamo(ch){const c=ch.charCodeAt(0)-0xAC00; if(c<0||c>11171) return null; return {cho:Math.floor(c/588),jung:Math.floor(c%588/28),jong:c%28};}
+const HAND={
+  summer:{name:'여름결',stroke:'#1A63C4',fill(j){ if(!j) return ''; if(j.jong===16) return '#45A84A'; if(j.cho===11) return '#9BD8FF'; return ''; }},
+  winter:{name:'겨울결',stroke:'#5A2D91',fill(j){ if(!j) return ''; if(j.jung===13||j.jung===17) return '#7FC86A'; if(j.cho===11) return '#E4D6FF'; return ''; }},
+  noon:  {name:'대낮결',stroke:'#9C5A3C',fill(j){ if(!j) return ''; if(j.cho===3||j.cho===2) return '#45A84A'; return ''; }}
+};
+
+/* ── 무드미터 감정 (x: 쾌적함, y: 활력) ── */
+const EMO={
+  '격분한':[-5,5],'화난':[-4,3.5],'불안한':[-3,3],'짜증나는':[-3,2],'초조한':[-2,2.5],'걱정되는':[-2,1.5],
+  '황홀한':[5,5],'신나는':[4,4],'들뜬':[3.5,3],'설레는':[3,3.5],'기쁜':[3,2],'즐거운':[2,1.5],
+  '절망한':[-5,-5],'무기력한':[-3,-4],'지친':[-2,-4],'슬픈':[-3.5,-2.5],'외로운':[-3,-2],'쓸쓸한':[-2,-3],'허전한':[-1.5,-1.5],
+  '안온한':[5,-5],'평온한':[3.5,-3.5],'나른한':[1.5,-3.5],'느긋한':[2.5,-3],'편안한':[3,-2],'고마운':[2.5,-1],'덤덤한':[.8,-1.5]
+};
+const Q={
+  red:   {name:'빨강',col:'#C0392B',form:'굵고 뾰족하게 기울어진 획',group:'빨강 · 활력 높고 불쾌'},
+  yellow:{name:'노랑',col:'#C98A00',form:'통통 튀는 획',group:'노랑 · 활력 높고 쾌적'},
+  blue:  {name:'파랑',col:'#1F5FAD',form:'가늘고 아래로 처지는 획',group:'파랑 · 활력 낮고 불쾌'},
+  green: {name:'초록',col:'#3E9A4A',form:'느긋하고 부드러운 획',group:'초록 · 활력 낮고 쾌적'}
+};
+function quad(n){const v=EMO[n]; if(!v) return null; return v[0]<0?(v[1]>=0?'red':'blue'):(v[1]>=0?'yellow':'green');}
+function emoOptions(sel){let h='<option value="">감정 선택 안 함</option>';
+  for(const k of ['red','yellow','blue','green']) h+=`<optgroup label="${Q[k].group}">`+Object.keys(EMO).filter(e=>quad(e)===k).map(e=>`<option${e===sel?' selected':''}>${e}</option>`).join('')+'</optgroup>';
+  return h;}
+function handOptions(sel){return [['auto','글꼴: 자동'],['summer','여름결'],['winter','겨울결'],['noon','대낮결']].map(([v,t])=>`<option value="${v}"${v===sel?' selected':''}>${t}</option>`).join('');}
+
+// 글자 하나의 형태: 감정의 활력(세로)·쾌적함(가로)과 세기(모서리일수록 강함)
+function charStyle(ch,emo,hand,k,j,len,jit){
+  let r=(rnd(k)-.5)*jit, ty=(rnd(k+99)-.5)*jit*.022, sx='', op='';
+  let sw=.05; // 외곽선 굵기(em)
+  if(emo){
+    const [x,y]=EMO[emo], amp=Math.max(Math.abs(x),Math.abs(y))/5, q=quad(emo);
+    sw=.05*(1+0.09*y);
+    if(q==='red'){ r+=(rnd(k+7)-.5)*(8+14*amp); sx=` skewX(-${(5+7*amp).toFixed(1)}deg)`; }
+    if(q==='yellow'){ ty+=Math.sin(k*1.5)*0.12*amp; r+=(rnd(k+7)-.5)*9*amp; }
+    if(q==='blue'){ ty+=j*0.07*amp; r+=2+6*amp; op=`;opacity:${(1-0.35*amp*(k%Math.max(len,1))/Math.max(len,1)).toFixed(2)}`; }
+    if(q==='green'){ ty+=Math.sin(k*0.7)*0.06*amp; r*=.5; }
+  }
+  const H=HAND[hand], stroke=emo?Q[quad(emo)].col:H.stroke, fill=H.fill(jamo(ch));
+  return `transform:rotate(${r.toFixed(1)}deg) translateY(${ty.toFixed(3)}em)${sx};-webkit-text-stroke:${sw.toFixed(3)}em ${stroke};color:${fill||'transparent'}${op}`;
+}
+
+function drawMeter(points,overall){
+  const X=v=>50+v*9,Y=v=>50-v*9;
+  let h=`<rect x="5" y="5" width="45" height="45" fill="none" stroke="#C0392B" stroke-width="2" stroke-dasharray="3 2"/><rect x="50" y="5" width="45" height="45" fill="none" stroke="#C98A00" stroke-width="2" stroke-dasharray="3 2"/>
+    <rect x="5" y="50" width="45" height="45" fill="none" stroke="#1F5FAD" stroke-width="2" stroke-dasharray="3 2"/><rect x="50" y="50" width="45" height="45" fill="none" stroke="#3E9A4A" stroke-width="2" stroke-dasharray="3 2"/>
+    <g font-family="Gowun Dodum,sans-serif" font-size="6" fill="#143C82"><text x="52" y="12">활력↑</text><text x="73" y="92">쾌적→</text></g>`;
+  if(EMO[overall]){const [x,y]=EMO[overall];
+    h+=`<path transform="translate(${X(x)} ${Y(y)})" d="M0 -9 L2.6 -3 L9 -2.8 L4 1.6 L5.6 8 L0 4.4 L-5.6 8 L-4 1.6 L-9 -2.8 L-2.6 -3Z" fill="none" stroke="${Q[quad(overall)].col}" stroke-width="2.2" stroke-linejoin="round"/>`;}
+  points.forEach(([emo,label],i)=>{const [x,y]=EMO[emo],c=Q[quad(emo)].col,jx=(rnd(i*7+x)-.5)*5,jy=(rnd(i*3+y)-.5)*5;
+    h+=`<circle cx="${X(x)+jx}" cy="${Y(y)+jy}" r="5" fill="none" stroke="${c}" stroke-width="1.8"/><text x="${X(x)+jx}" y="${Y(y)+jy+2.2}" text-anchor="middle" font-size="6" font-weight="700" fill="${c}" font-family="sans-serif">${label}</text>`;});
+  return h;
+}
+
+/* ── 상태 ── */
+const SAMPLE=`(예시 문장입니다. 이 칸을 지우고 시 전문을 붙여 넣으세요.)
+여름이 튜브를 끼고 지나간 자리에
+대낮의 그림자가 오래 앉아 있다
+
+겨울은 아직 먼 데서
+눈송이를 하나씩 접는 중 #쓸쓸한
+
+창문을 닫아도 바람은
+오늘의 일을 조용히 적어 둔다`;
+const SAMPLE_GS='(예시 감상) 담담한 말투 속에서 계절이 바뀌는 쓸쓸함이 느껴졌다. 그래서 앞 연은 초록의 느긋한 획으로, 둘째 연은 처지는 획으로 썼다.';
+let state={emos:['나른한','외로운','덤덤한'],hands:['auto','auto','auto'],ov:'덤덤한',gs:SAMPLE_GS,base:'mix',mode:'plain'};
+function load(k,d){try{const v=localStorage.getItem(k);return v===null?d:v;}catch(e){return d;}}
+$('p').value=load('poem-text-v2',SAMPLE);
+try{const s=JSON.parse(load('poem-feel-v2','null')); if(s) state=Object.assign(state,s);}catch(e){}
+$('ov').innerHTML=emoOptions(state.ov); $('gs').value=state.gs; $('base').value=state.base;
+(state.mode==='fancy'?$('m2'):$('m1')).checked=true;
+function save(){try{localStorage.setItem('poem-text-v2',$('p').value);localStorage.setItem('poem-feel-v2',JSON.stringify(state));}catch(e){}}
+
+let lastSig='';
+function buildRows(stanzas){
+  const sig=stanzas.map(s=>s.split('\n')[0]).join('|'); if(sig===lastSig) return; lastSig=sig;
+  $('emoList').innerHTML=stanzas.map((st,i)=>`<div class="emo-row"><div class="top"><b>${i+1}연</b><span>${esc(st.split('\n')[0].replace(/\s*#[가-힣]+\s*$/,''))}</span></div>
+    <div class="sels"><select id="e${i}" aria-label="${i+1}연 감정">${emoOptions(state.emos[i]||'')}</select><select id="h${i}" aria-label="${i+1}연 글꼴">${handOptions(state.hands[i]||'auto')}</select></div></div>`).join('');
+  stanzas.forEach((_,i)=>{
+    $('e'+i).addEventListener('input',ev=>{state.emos[i]=ev.target.value;render();});
+    $('h'+i).addEventListener('input',ev=>{state.hands[i]=ev.target.value;render();});
+  });
+}
+function handFor(si,text){
+  const pick=state.hands[si]||'auto'; if(pick!=='auto') return pick;
+  for(const w of Object.keys(GLYPH)) if(text.includes(w)) return GLYPH[w].hand;
+  return state.base==='mix'?['summer','winter','noon'][si%3]:state.base;
+}
+
+function renderLine(text,jit,seed,emo,hand){
+  const re=new RegExp('('+Object.keys(GLYPH).join('|')+')','g');
+  const len=[...text].length; let html='',n=seed;
+  for(const part of text.split(re)){
+    if(!part) continue;
+    if(GLYPH[part]){ html+=glyphSVG(part); continue; }
+    html+=part.split(/( +)/).map(tok=>{
+      if(/^ +$/.test(tok)) return tok.replace(/ /g,' ');
+      return '<span class="w">'+[...tok].map((ch,j)=>{n++;return `<span class="ch" style="${charStyle(ch,emo,hand,n,j,len,jit)}">${esc(ch)}</span>`;}).join('')+'</span>';
+    }).join('');
+  }
+  return {html,n};
+}
+
+function render(){
+  const jit=+$('jt').value;
+  state.ov=$('ov').value; state.gs=$('gs').value; state.base=$('base').value; state.mode=$('m2').checked?'fancy':'plain';
+  $('sheet').classList.toggle('fancy',state.mode==='fancy');
+  // 제목: 보라 외곽선 속 빈 글자, ㅇ·ㅁ 들어간 글자는 초록 칠
+  $('vt').innerHTML=[...$('t').value].map((ch,i)=>{if(ch===' ') return ' ';const j=jamo(ch),f=j&&(j.cho===11||j.jong===16);
+    return `<span class="t${f?' f':''}" style="transform:rotate(${((rnd(i+40)-.5)*6).toFixed(1)}deg)">${esc(ch)}</span>`;}).join('');
+  $('va').textContent=$('a').value;
+  $('vc').innerHTML=[['여름결',$('n1').value,'#1A63C4'],['겨울결',$('n2').value,'#5A2D91'],['대낮결',$('n3').value,'#9C5A3C']]
+    .filter(r=>r[1].trim()).map(([w,n,c])=>`<span><i style="background:${c}"></i>${w} · ${esc(n)}</span>`).join('');
+
+  const stanzas=$('p').value.replace(/\r/g,'').trim().split(/\n\s*\n/);
+  buildRows(stanzas);
+  let seed=1,out='',points=[],legend=[];
+  stanzas.forEach((st,si)=>{
+    const se=EMO[state.emos[si]]?state.emos[si]:'', hand=handFor(si,st);
+    out+=`<div class="stanza">`;
+    const lab=`${si+1}연 ${HAND[hand].name}`;
+    if(se){points.push([se,String(si+1)]); legend.push(`<li><i style="background:${Q[quad(se)].col}"></i>${lab} · ${se} → ${Q[quad(se)].name} 외곽선, ${Q[quad(se)].form}</li>`);}
+    else legend.push(`<li><i style="background:${HAND[hand].stroke}"></i>${lab} · 학생 작품 원래 색</li>`);
+    st.split('\n').forEach((raw,li)=>{
+      const m=raw.match(/\s*#([가-힣]+)\s*$/); let line=raw,le=se,own=false;
+      if(m&&EMO[m[1]]){line=raw.slice(0,m.index);le=m[1];own=true;points.push([le,(si+1)+'·'+(li+1)]);
+        legend.push(`<li><i style="background:${Q[quad(le)].col}"></i>${si+1}연 ${li+1}행 · ${le} → ${Q[quad(le)].form}</li>`);}
+      const r=renderLine(line,jit,seed,le,hand); seed=r.n+7;
+      const sz=le?(1+0.03*EMO[le][1]).toFixed(3):'1', ls=le&&EMO[le][1]<0?`letter-spacing:${(-.015*EMO[le][1]).toFixed(3)}em;`:'';
+      const tag=(own||(li===0&&se))?`<span class="emo-tag" style="--tc:${Q[quad(le)].col}">${le}</span>`:'';
+      out+=`<span class="line hand-${hand}" style="font-size:${sz}em;${ls}">${r.html||' '}${tag}</span>`;
+    });
+    out+='</div>';
+  });
+  $('sheet').classList.toggle('no-card',!$('showk').checked);
+  $('meter').innerHTML=drawMeter(points,state.ov);
+  $('ovline').innerHTML=EMO[state.ov]?`시 감상 · 전체 정서 <b style="--tc:${Q[quad(state.ov)].col}">${state.ov}</b>`:'시 감상';
+  $('vgs').textContent=state.gs; $('vlist').innerHTML=legend.join('');
+
+  const vp=$('vp'); vp.innerHTML=out; let fs=+$('fs').value;
+  if($('fit').checked){let lo=8,hi=32;while(hi-lo>.25){const mid=(lo+hi)/2;vp.style.fontSize=mid+'pt';if(vp.scrollHeight>vp.clientHeight+1)hi=mid;else lo=mid;}fs=lo;$('fs').value=Math.round(fs);}
+  vp.style.fontSize=fs+'pt';
+  save();
+}
+['t','a','p','jt','fit','n1','n2','n3','ov','gs','showk','base','m1','m2'].forEach(id=>$(id).addEventListener('input',render));
+$('fs').addEventListener('input',()=>{$('fit').checked=false;render();});
+
+/* ── 저장: 시판을 고해상도 그림으로 찍어 PDF/PNG로 ── */
+const DEFS=document.querySelector('svg defs');
+async function snap(scale){
+  document.body.classList.add('exporting');
+  try{
+    return await html2canvas($('sheet'),{scale,backgroundColor:null,useCORS:true,logging:false,onclone(doc){
+      doc.body.classList.add('exporting');
+      doc.querySelectorAll('#sheet svg').forEach(svg=>{ if(/url\(#/.test(svg.innerHTML)) svg.insertBefore(DEFS.cloneNode(true),svg.firstChild); });
+    }});
+  } finally { document.body.classList.remove('exporting'); }
+}
+function fname(ext){return (($('t').value||'시판').replace(/[\\/:*?"<>|]/g,'').trim()||'시판')+'_감정글꼴.'+ext;}
+function say(t){$('status').textContent=t;}
+let dlP=null;
+// 내려받기가 막힌 화면(학생 계정·공개 링크 등)에서는 완성 그림을 띄워 길게 눌러/우클릭해 저장하게 함
+function showImage(cv,why){
+  const url=cv.toDataURL('image/png');
+  $('pvImg').src=url; $('pvWhy').textContent=why; $('pv').hidden=false; $('pvClose').focus();
+  say('완성 그림을 띄웠어요.');
+}
+async function offer(blob,ext,cv){
+  const dl=window.claude?.use?await(dlP||(dlP=window.claude.use('downloads'))):null;
+  if(dl){
+    try{await dl.save({filename:fname(ext),data:blob});say('저장했어요.');}
+    catch(e){ if(e&&e.code==='declined') say('저장을 취소했어요.');
+      else if(e&&e.code==='rate_limited') say('저장 창이 이미 열려 있어요. 잠시 뒤 다시 눌러 주세요.');
+      else showImage(cv,'이 화면에서는 파일 내려받기가 안 돼요.'); }
+  } else if(location.protocol!=='file:'){
+    showImage(cv,'이 화면에서는 파일 내려받기가 안 돼요.');
+  } else {
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname(ext);
+    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);say('저장했어요.');
+  }
+}
+async function exportAs(kind){
+  if(!window.html2canvas||(kind==='pdf'&&!window.jspdf)){say('저장 도구를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.');return;}
+  const btns=[$('savePdf'),$('savePng')];btns.forEach(b=>b.disabled=true);say('시판을 그리는 중이에요…');
+  try{
+    await (document.fonts?document.fonts.ready:0);
+    const cv=await snap(kind==='pdf'?3:2.5);
+    if(kind==='pdf'){const pdf=new window.jspdf.jsPDF({unit:'mm',format:'a4',orientation:'portrait'});
+      pdf.addImage(cv.toDataURL('image/jpeg',0.93),'JPEG',0,0,210,297);await offer(pdf.output('blob'),'pdf',cv);}
+    else{const blob=await new Promise(r=>cv.toBlob(r,'image/png'));await offer(blob,'png',cv);}
+  }catch(e){say('저장 중 문제가 생겼어요: '+(e&&e.message||e));}
+  finally{btns.forEach(b=>b.disabled=false);}
+}
+$('savePdf').addEventListener('click',()=>exportAs('pdf'));
+$('pvClose').addEventListener('click',()=>{$('pv').hidden=true;});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')$('pv').hidden=true;});
+$('savePng').addEventListener('click',()=>exportAs('png'));
+if(location.protocol==='file:'){$('print').hidden=false;}
+$('print').addEventListener('click',()=>window.print());
+(document.fonts?document.fonts.ready:Promise.resolve()).then(render); render();
+</script>
+</body>
+</html>
